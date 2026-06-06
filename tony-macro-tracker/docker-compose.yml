@@ -16,7 +16,7 @@ services:
       retries: 5
 
   api:
-    image: YOURDOCKERHUBUSERNAME/macro-tracker-api:latest
+    image: tonybooom/macro-tracker-api:latest
     container_name: macro-tracker-api
     restart: on-failure
     environment:
@@ -28,7 +28,7 @@ services:
         condition: service_healthy
 
   frontend:
-    image: YOURDOCKERHUBUSERNAME/macro-tracker-frontend:latest
+    image: tonybooom/macro-tracker-frontend:latest
     container_name: macro-tracker-frontend
     restart: on-failure
     ports:
