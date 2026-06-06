@@ -1,0 +1,28 @@
+manifestVersion: 1
+id: tony-macro-tracker
+name: Macro Tracker
+tagline: A super fast privacy-focused app for tracking food macros
+icon: https://raw.githubusercontent.com/dennysubke/dennys-umbrel-app-gallery/main/denny-actualbudget/logo.png
+category: Health
+version: "0.0.1"
+port: 8069
+description: >-
+  Macro Tracker is a privacy-first personal food macro tracking tool designed for users to self-host their data and manage their food macros with complete control.
+
+developer: tony
+website: http://192.168.1.118:8085/fazle1337/Tony-Umbrel
+submitter: tony
+submission: http://192.168.1.118:8085/fazle1337/Tony-Umbrel
+repo: http://192.168.1.118:8085/fazle1337/Tony-Umbrel/macro-tracker
+support: http://192.168.1.118:8085/fazle1337/Tony-Umbrel
+gallery:
+  - https://raw.githubusercontent.com/dennysubke/dennys-umbrel-app-gallery/main/denny-actualbudget/1.jpg
+  - https://raw.githubusercontent.com/dennysubke/dennys-umbrel-app-gallery/main/denny-actualbudget/2.jpg
+  - https://raw.githubusercontent.com/dennysubke/dennys-umbrel-app-gallery/main/denny-actualbudget/3.jpg
+  - https://raw.githubusercontent.com/dennysubke/dennys-umbrel-app-gallery/main/denny-actualbudget/4.jpg
+releaseNotes: >-
+  The latest update for Actual Budget (version 24.10.0) includes enhancements like aligning the mobile budget table's column names and bug fixes that improve performance and user experience. Notable fixes address issues with syncing preferences, empty blocks in reports, and auto-selection of budget files on mobile.
+dependencies:
+path: ""
+defaultUsername: "none"
+defaultPassword: "password"
