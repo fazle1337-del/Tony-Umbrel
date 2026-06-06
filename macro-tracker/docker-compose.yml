@@ -1,0 +1,44 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: macro-tracker-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: macrotracker
+      POSTGRES_USER: macrouser
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme123}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U macrouser -d macrotracker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    container_name: macro-tracker-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://macrouser:${DB_PASSWORD:-changeme123}@db:5432/macrotracker
+      API_SECRET: ${API_SECRET:-supersecretkey}
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+
+  frontend:
+    build: ./frontend
+    container_name: macro-tracker-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  db_data:

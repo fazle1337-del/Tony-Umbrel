@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Macro Tracker</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg-primary:#ffffff;--bg-secondary:#f5f5f3;--bg-tertiary:#eeede9;
+    --text-primary:#1a1a18;--text-secondary:#6b6b67;--text-tertiary:#9a9a96;
+    --text-danger:#791f1f;--text-success:#1a5c0a;
+    --bg-danger:#fcebeb;--bg-success:#eaf3de;
+    --border-light:rgba(0,0,0,0.12);--border-med:rgba(0,0,0,0.22);
+    --radius-md:8px;--radius-lg:12px;
+    --font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  @media(prefers-color-scheme:dark){:root{
+    --bg-primary:#1e1e1c;--bg-secondary:#2a2a28;--bg-tertiary:#181816;
+    --text-primary:#f0efe9;--text-secondary:#a8a8a2;--text-tertiary:#6b6b67;
+    --text-danger:#f09595;--text-success:#97c459;
+    --bg-danger:#501313;--bg-success:#173404;
+    --border-light:rgba(255,255,255,0.1);--border-med:rgba(255,255,255,0.2);
+  }}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font);background:var(--bg-tertiary);color:var(--text-primary);font-size:15px;line-height:1.5;min-height:100vh}
+  .shell{max-width:1100px;margin:0 auto;padding:0 1rem}
+  header{background:var(--bg-primary);border-bottom:0.5px solid var(--border-light);padding:0 1rem;position:sticky;top:0;z-index:50}
+  .header-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:52px;gap:12px}
+  .logo{font-size:16px;font-weight:600;color:var(--text-primary);display:flex;align-items:center;gap:8px;white-space:nowrap}
+  .logo i{font-size:20px;color:#7F77DD}
+  .nav{display:flex;gap:2px}
+  .nav-btn{font-size:13px;padding:6px 12px;border:none;background:transparent;cursor:pointer;color:var(--text-secondary);border-radius:var(--radius-md);font-family:var(--font);display:flex;align-items:center;gap:4px;white-space:nowrap}
+  .nav-btn:hover{background:var(--bg-secondary);color:var(--text-primary)}
+  .nav-btn.active{background:var(--bg-secondary);color:var(--text-primary);font-weight:500}
+  .sync-status{font-size:11px;color:var(--text-tertiary);display:flex;align-items:center;gap:4px;white-space:nowrap}
+  .sync-status.syncing{color:#7F77DD}
+  .sync-status.error{color:var(--text-danger)}
+  main{padding:1.5rem 0}
+  .page{display:none}.page.active{display:block}
+  .card{background:var(--bg-primary);border:0.5px solid var(--border-light);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:1rem}
+  .section-title{font-size:14px;font-weight:500;margin-bottom:12px}
+  .two-col{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,0.7fr);gap:1rem}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+  .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
+  .metric{background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px}
+  .metric-label{font-size:12px;color:var(--text-secondary);margin-bottom:4px}
+  .metric-val{font-size:22px;font-weight:500}
+  .metric-val.prot{color:#7F77DD}.metric-val.carb{color:#1D9E75}.metric-val.fat{color:#D85A30}
+  .date-nav{display:flex;align-items:center;gap:8px;margin-bottom:1rem}
+  .date-nav button,.btn-sm{padding:5px 10px;border-radius:var(--radius-md);border:0.5px solid var(--border-med);background:var(--bg-primary);cursor:pointer;color:var(--text-secondary);font-size:13px;font-family:var(--font)}
+  .date-nav button:hover,.btn-sm:hover{background:var(--bg-secondary)}
+  input,select{width:100%;font-size:13px;padding:7px 10px;border:0.5px solid var(--border-med);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-primary);font-family:var(--font);outline:none}
+  input:focus,select:focus{border-color:#7F77DD;box-shadow:0 0 0 2px rgba(127,119,221,0.15)}
+  label{font-size:12px;color:var(--text-secondary);display:block;margin-bottom:3px}
+  .form-row{display:grid;gap:10px;margin-bottom:10px}
+  .cols2{grid-template-columns:1fr 1fr}.cols3{grid-template-columns:1fr 1fr 1fr}
+  @media(max-width:500px){.cols2,.cols3{grid-template-columns:1fr}}
+  .btn{font-size:13px;padding:7px 14px;border-radius:var(--radius-md);border:0.5px solid var(--border-med);background:transparent;cursor:pointer;color:var(--text-primary);display:inline-flex;align-items:center;gap:6px;font-family:var(--font)}
+  .btn:hover{background:var(--bg-secondary)}
+  .btn.primary{background:var(--text-primary);color:var(--bg-primary);border-color:var(--text-primary)}
+  .btn.primary:hover{opacity:0.85}
+  .btn.danger{border-color:var(--text-danger);color:var(--text-danger);font-size:11px;padding:2px 8px}
+  .btn.danger:hover{background:var(--bg-danger)}
+  .btn.edit{border-color:var(--border-med);color:var(--text-secondary);font-size:11px;padding:2px 8px}
+  .btn.edit:hover{background:var(--bg-secondary)}
+  table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+  thead th{text-align:left;padding:7px 8px;font-size:12px;font-weight:500;color:var(--text-secondary);border-bottom:0.5px solid var(--border-med)}
+  thead th.r{text-align:right}
+  tbody tr{border-bottom:0.5px solid var(--border-light)}
+  tbody tr:hover{background:var(--bg-secondary)}
+  tbody td{padding:7px 8px;color:var(--text-primary)}
+  tbody td.r{text-align:right;color:var(--text-secondary);font-variant-numeric:tabular-nums}
+  tbody td.act{text-align:right;white-space:nowrap}
+  .tot-row td{font-weight:500;background:var(--bg-secondary);color:var(--text-primary)!important}
+  .pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:20px}
+  .pill-p{background:#EEEDFE;color:#3C3489}.pill-c{background:#E1F5EE;color:#085041}.pill-f{background:#FAECE7;color:#712B13}
+  .search-wrap{position:relative}
+  .search-wrap input{padding-left:32px}
+  .search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--text-tertiary);pointer-events:none}
+  .suggestions{border:0.5px solid var(--border-med);border-radius:var(--radius-md);max-height:200px;overflow-y:auto;display:none;background:var(--bg-primary);position:absolute;width:100%;z-index:100;margin-top:2px;box-shadow:0 4px 12px rgba(0,0,0,0.1)}
+  .suggestion-item{padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid var(--border-light);display:flex;justify-content:space-between;align-items:center}
+  .suggestion-item:hover{background:var(--bg-secondary)}
+  .suggestion-item:last-child{border-bottom:none}
+  .empty{font-size:13px;color:var(--text-tertiary);padding:2rem;text-align:center}
+  .preview-bar{background:var(--bg-secondary);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:10px;font-size:13px;display:flex;gap:20px}
+  .unit-hint{font-size:12px;color:var(--text-secondary);margin:-4px 0 8px;display:none}
+  .chart-legend{display:flex;gap:16px;margin-bottom:8px;font-size:12px;color:var(--text-secondary)}
+  .chart-legend span{display:flex;align-items:center;gap:4px}
+  .chart-legend .sq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+  .upload-zone{border:0.5px dashed var(--border-med);border-radius:var(--radius-md);padding:2rem;text-align:center;cursor:pointer;margin-bottom:1rem}
+  .upload-zone:hover{background:var(--bg-secondary)}
+  .upload-zone i{font-size:32px;color:var(--text-tertiary)}
+  .upload-zone p{font-size:13px;color:var(--text-secondary);margin-top:8px}
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--text-primary);color:var(--bg-primary);padding:10px 16px;border-radius:var(--radius-md);font-size:13px;opacity:0;transition:opacity 0.2s;pointer-events:none;z-index:999}
+  .toast.show{opacity:1}
+  .macro-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;gap:1px}
+  .relative{position:relative}
+  code{font-family:monospace;background:var(--bg-secondary);padding:1px 5px;border-radius:4px;font-size:12px}
+  .loading-overlay{position:fixed;inset:0;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;z-index:200;font-size:14px;color:var(--text-secondary);gap:10px}
+  .spinner{width:20px;height:20px;border:2px solid var(--border-med);border-top-color:#7F77DD;border-radius:50%;animation:spin 0.7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay" class="loading-overlay">
+  <div class="spinner"></div> Connecting to server…
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="logo"><i class="ti ti-salad"></i> Macro Tracker</div>
+    <nav class="nav">
+      <button class="nav-btn active" onclick="showPage('log')"><i class="ti ti-pencil"></i><span>Log</span></button>
+      <button class="nav-btn" onclick="showPage('history')"><i class="ti ti-calendar"></i><span>History</span></button>
+      <button class="nav-btn" onclick="showPage('foods')"><i class="ti ti-database"></i><span>Foods</span></button>
+      <button class="nav-btn" onclick="showPage('import')"><i class="ti ti-upload"></i><span>Import</span></button>
+    </nav>
+    <div class="sync-status" id="sync-status"><i class="ti ti-circle-check"></i> Synced</div>
+  </div>
+</header>
+
+<main>
+<div class="shell">
+
+<!-- LOG PAGE -->
+<div id="page-log" class="page active">
+  <div class="date-nav">
+    <button onclick="shiftDate(-1)"><i class="ti ti-chevron-left"></i></button>
+    <input type="date" id="log-date" style="width:auto;font-size:14px;font-weight:500" onchange="loadDayEntries()">
+    <button onclick="shiftDate(1)"><i class="ti ti-chevron-right"></i></button>
+    <button onclick="setToday()">Today</button>
+  </div>
+  <div class="two-col">
+    <div>
+      <div class="card">
+        <div class="section-title">Add entry</div>
+        <div class="form-row" style="margin-bottom:6px">
+          <div>
+            <label>Food</label>
+            <div class="relative">
+              <div class="search-wrap">
+                <i class="ti ti-search search-icon"></i>
+                <input type="text" id="food-search" placeholder="Search food…" oninput="filterFoodSearch()" autocomplete="off">
+              </div>
+              <div class="suggestions" id="food-suggestions"></div>
+            </div>
+          </div>
+        </div>
+        <div class="unit-hint" id="unit-hint"></div>
+        <div class="form-row cols2">
+          <div><label id="amount-label">Amount (g)</label><input type="number" id="entry-amount" placeholder="e.g. 200" min="0" step="any" oninput="calcPreview()"></div>
+          <div><label>Meal (optional)</label><input type="text" id="entry-meal" placeholder="e.g. Breakfast"></div>
+        </div>
+        <div class="preview-bar">
+          <span>Protein: <strong id="prev-p">—</strong></span>
+          <span>Carbs: <strong id="prev-c">—</strong></span>
+          <span>Fat: <strong id="prev-f">—</strong></span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn primary" onclick="addEntry()"><i class="ti ti-plus"></i> Add entry</button>
+          <button class="btn" onclick="clearEntryForm()">Clear</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-title">Log entries</div>
+        <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th style="width:30%">Food</th>
+            <th style="width:13%">Meal</th>
+            <th class="r" style="width:13%">Amount</th>
+            <th class="r" style="width:12%">Protein</th>
+            <th class="r" style="width:12%">Carbs</th>
+            <th class="r" style="width:12%">Fat</th>
+            <th style="width:8%"></th>
+          </tr></thead>
+          <tbody id="log-tbody"></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="metric-grid">
+        <div class="metric"><div class="metric-label">Protein</div><div class="metric-val prot" id="tot-p">0g</div></div>
+        <div class="metric"><div class="metric-label">Carbs</div><div class="metric-val carb" id="tot-c">0g</div></div>
+        <div class="metric"><div class="metric-label">Fat</div><div class="metric-val fat" id="tot-f">0g</div></div>
+      </div>
+      <div class="metric" style="margin-bottom:1rem"><div class="metric-label">Total kcal (est.)</div><div class="metric-val" id="tot-kcal" style="font-size:20px">0</div></div>
+      <div class="card">
+        <div class="chart-legend">
+          <span><span class="sq" style="background:#7F77DD"></span>Protein</span>
+          <span><span class="sq" style="background:#1D9E75"></span>Carbs</span>
+          <span><span class="sq" style="background:#D85A30"></span>Fat</span>
+        </div>
+        <div style="position:relative;height:200px"><canvas id="macro-donut" role="img" aria-label="Macro split donut chart">Macro split</canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY PAGE -->
+<div id="page-history" class="page">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div class="section-title" style="margin:0">Daily history</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="date" id="hist-from" style="width:auto;font-size:13px">
+        <span style="font-size:13px;color:var(--text-secondary)">to</span>
+        <input type="date" id="hist-to" style="width:auto;font-size:13px">
+        <button class="btn" onclick="loadHistory()">Filter</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr>
+        <th style="width:15%">Date</th>
+        <th class="r" style="width:14%">Protein</th>
+        <th class="r" style="width:14%">Carbs</th>
+        <th class="r" style="width:14%">Fat</th>
+        <th class="r" style="width:13%">Kcal</th>
+        <th style="width:30%">Split</th>
+      </tr></thead>
+      <tbody id="hist-tbody"></tbody>
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="chart-legend">
+      <span><span class="sq" style="background:#7F77DD"></span>Protein</span>
+      <span><span class="sq" style="background:#1D9E75"></span>Carbs</span>
+      <span><span class="sq" style="background:#D85A30"></span>Fat</span>
+    </div>
+    <div style="position:relative;height:240px"><canvas id="hist-chart" role="img" aria-label="Daily macro history chart">History chart</canvas></div>
+  </div>
+</div>
+
+<!-- FOODS PAGE -->
+<div id="page-foods" class="page">
+  <div class="card">
+    <div class="section-title" id="food-form-title">Add food</div>
+    <div class="form-row cols2">
+      <div><label>Food name</label><input type="text" id="fd-name" placeholder="e.g. Chicken breast"></div>
+      <div><label>Category</label><select id="fd-cat">
+        <option>poultry</option><option>beef</option><option>pork</option><option>fish</option>
+        <option>eggs</option><option>dairy</option><option>grains</option><option>legumes</option><option>other</option>
+      </select></div>
+    </div>
+    <div class="form-row cols2">
+      <div><label>Unit type</label><select id="fd-unit" onchange="toggleUnitFields()">
+        <option value="g">Per gram</option>
+        <option value="fixed">Fixed unit (scoop, pack…)</option>
+      </select></div>
+      <div><label>Unit label</label><input type="text" id="fd-unit-name" placeholder="e.g. Per Scoop"></div>
+    </div>
+    <div class="form-row cols3">
+      <div><label id="fd-p-label">Protein per 1g</label><input type="number" id="fd-p" placeholder="0.31" step="0.001"></div>
+      <div><label id="fd-c-label">Carbs per 1g</label><input type="number" id="fd-c" placeholder="0" step="0.001"></div>
+      <div><label id="fd-f-label">Fat per 1g</label><input type="number" id="fd-f" placeholder="0.036" step="0.001"></div>
+    </div>
+    <div class="form-row" style="max-width:200px">
+      <div><label>State</label><select id="fd-state"><option>Cooked</option><option>Raw</option><option>As is</option></select></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn primary" onclick="saveFood()"><i class="ti ti-check"></i> Save food</button>
+      <button class="btn" id="fd-cancel-btn" onclick="clearFoodForm()" style="display:none">Cancel edit</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="relative" style="margin-bottom:12px">
+      <div class="search-wrap">
+        <i class="ti ti-search search-icon"></i>
+        <input type="text" id="food-db-search" placeholder="Search foods…" oninput="renderFoodsTable()">
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr>
+        <th style="width:26%">Name</th>
+        <th style="width:9%">Cat</th>
+        <th style="width:10%">Unit</th>
+        <th style="width:8%">State</th>
+        <th class="r" style="width:12%">Protein</th>
+        <th class="r" style="width:12%">Carbs</th>
+        <th class="r" style="width:12%">Fat</th>
+        <th style="width:11%"></th>
+      </tr></thead>
+      <tbody id="foods-tbody"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT PAGE -->
+<div id="page-import" class="page">
+  <div class="card">
+    <div class="section-title">Import from spreadsheet</div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+      CSV with columns: <code>date</code> <code>food</code> <code>amount</code> <code>protein</code> <code>carbs</code> <code>fat</code>. Optional: <code>meal</code>. Header row required.
+    </p>
+    <div class="upload-zone" onclick="document.getElementById('csv-input').click()">
+      <i class="ti ti-file-upload"></i>
+      <p>Click to upload CSV</p>
+      <input type="file" id="csv-input" accept=".csv,.tsv" style="display:none" onchange="handleCSV(this)">
+    </div>
+    <div id="import-preview"></div>
+  </div>
+  <div class="card">
+    <div class="section-title">Export log</div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">Download your full log as CSV for LibreOffice.</p>
+    <button class="btn" onclick="exportCSV()"><i class="ti ti-download"></i> Download CSV</button>
+  </div>
+</div>
+
+</div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+// API_KEY is injected at runtime from the .env file via nginx env substitution
+// For simplicity we read it from a meta tag set by the build, or fall back to
+// a placeholder that you replace before deploying.
+const API_KEY = window.API_KEY || 'REPLACE_WITH_YOUR_API_SECRET';
+const API_BASE = '/api';
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let foods = [];
+let dayEntries = [];
+let editFoodId = null;
+let selectedFood = null;
+let donutChart = null;
+let histChart = null;
+
+// ─── API HELPERS ──────────────────────────────────────────────────────────────
+async function apiFetch(path, options = {}) {
+  setSyncStatus('syncing');
+  try {
+    const res = await fetch(API_BASE + path, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        ...(options.headers || {})
+      }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    setSyncStatus('ok');
+    return data;
+  } catch (e) {
+    setSyncStatus('error');
+    showToast('Server error — check connection');
+    throw e;
+  }
+}
+
+function setSyncStatus(state) {
+  const el = document.getElementById('sync-status');
+  if (state === 'syncing') { el.className = 'sync-status syncing'; el.innerHTML = '<div class="spinner" style="width:12px;height:12px;border-width:1.5px"></div> Syncing…'; }
+  else if (state === 'error') { el.className = 'sync-status error'; el.innerHTML = '<i class="ti ti-alert-circle"></i> Offline'; }
+  else { el.className = 'sync-status'; el.innerHTML = '<i class="ti ti-circle-check"></i> Synced'; }
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function uid() { return 'e' + Date.now() + Math.random().toString(36).slice(2, 6) }
+function fid() { return 'f' + Date.now() + Math.random().toString(36).slice(2, 6) }
+function todayStr() { return new Date().toISOString().slice(0, 10) }
+function fmtDate(d) { const [y, m, day] = d.split('-'); return `${day}/${m}` }
+
+function calcMacros(entry) {
+  const amt = parseFloat(entry.amount) || 0;
+  return {
+    p: +(entry.p * amt).toFixed(2),
+    c: +(entry.c * amt).toFixed(2),
+    f: +(entry.fat * amt).toFixed(2)
+  };
+}
+
+// ─── NAV ──────────────────────────────────────────────────────────────────────
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(x => x.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  const map = { log: 0, history: 1, foods: 2, import: 3 };
+  document.querySelectorAll('.nav-btn')[map[p]].classList.add('active');
+  if (p === 'history') loadHistory();
+  if (p === 'foods') renderFoodsTable();
+}
+
+// ─── LOG PAGE ─────────────────────────────────────────────────────────────────
+function getLogDate() { return document.getElementById('log-date').value || todayStr() }
+function shiftDate(d) {
+  const dt = new Date(getLogDate() + 'T12:00:00');
+  dt.setDate(dt.getDate() + d);
+  document.getElementById('log-date').value = dt.toISOString().slice(0, 10);
+  loadDayEntries();
+}
+function setToday() { document.getElementById('log-date').value = todayStr(); loadDayEntries() }
+
+async function loadDayEntries() {
+  const date = getLogDate();
+  try {
+    dayEntries = await apiFetch(`/log/${date}`);
+    renderLog();
+  } catch (e) { /* handled in apiFetch */ }
+}
+
+function renderLog() {
+  const tbody = document.getElementById('log-tbody');
+  let tp = 0, tc = 0, tf = 0;
+  if (!dayEntries.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">No entries for this day</td></tr>`;
+    updateTotals(0, 0, 0); return;
+  }
+  tbody.innerHTML = dayEntries.map(e => {
+    const m = calcMacros(e);
+    tp += m.p; tc += m.c; tf += m.f;
+    const amtLabel = e.unit === 'fixed' ? `${e.amount}× ${e.unitName}` : e.amount + 'g';
+    return `<tr>
+      <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.foodName}">${e.foodName}</td>
+      <td style="font-size:12px;color:var(--text-secondary)">${e.meal || '—'}</td>
+      <td class="r" style="font-size:12px">${amtLabel}</td>
+      <td class="r"><span class="pill pill-p">${m.p}g</span></td>
+      <td class="r"><span class="pill pill-c">${m.c}g</span></td>
+      <td class="r"><span class="pill pill-f">${m.f}g</span></td>
+      <td class="act"><button class="btn danger" onclick="deleteEntry('${e.id}')"><i class="ti ti-trash"></i></button></td>
+    </tr>`;
+  }).join('') + `<tr class="tot-row"><td colspan="3" style="font-weight:500">Total</td><td class="r">${tp.toFixed(1)}g</td><td class="r">${tc.toFixed(1)}g</td><td class="r">${tf.toFixed(1)}g</td><td></td></tr>`;
+  updateTotals(tp, tc, tf);
+}
+
+function updateTotals(p, c, f) {
+  document.getElementById('tot-p').textContent = p.toFixed(1) + 'g';
+  document.getElementById('tot-c').textContent = c.toFixed(1) + 'g';
+  document.getElementById('tot-f').textContent = f.toFixed(1) + 'g';
+  document.getElementById('tot-kcal').textContent = Math.round(p * 4 + c * 4 + f * 9) + ' kcal';
+  renderDonut(p, c, f);
+}
+
+function renderDonut(p, c, f) {
+  const ctx = document.getElementById('macro-donut').getContext('2d');
+  if (donutChart) donutChart.destroy();
+  const total = p + c + f;
+  donutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels: ['Protein', 'Carbs', 'Fat'], datasets: [{ data: total ? [p, c, f] : [1, 1, 1], backgroundColor: ['#7F77DD', '#1D9E75', '#D85A30'], borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: d => `${d.label}: ${d.raw}g${total ? ' (' + Math.round(d.raw / total * 100) + '%)' : ''}` } } } }
+  });
+}
+
+async function addEntry() {
+  const date = getLogDate();
+  const amount = parseFloat(document.getElementById('entry-amount').value);
+  const meal = document.getElementById('entry-meal').value.trim();
+  if (!selectedFood) { showToast('Select a food first'); return }
+  if (!amount || amount <= 0) { showToast('Enter a valid amount'); return }
+  try {
+    const entry = await apiFetch('/log', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: uid(), date,
+        foodId: selectedFood.id, foodName: selectedFood.name,
+        p: selectedFood.p, c: selectedFood.c, fat: selectedFood.f,
+        unit: selectedFood.unit, unitName: selectedFood.unitName,
+        amount, meal
+      })
+    });
+    dayEntries.push(entry);
+    renderLog();
+    clearEntryForm();
+    showToast('Entry added');
+  } catch (e) { /* handled */ }
+}
+
+async function deleteEntry(id) {
+  try {
+    await apiFetch(`/log/${id}`, { method: 'DELETE' });
+    dayEntries = dayEntries.filter(e => e.id !== id);
+    renderLog();
+  } catch (e) { /* handled */ }
+}
+
+function clearEntryForm() {
+  document.getElementById('food-search').value = '';
+  document.getElementById('entry-amount').value = '';
+  document.getElementById('entry-meal').value = '';
+  selectedFood = null; calcPreview(); updateAmountLabel(null);
+}
+
+// ─── FOOD SEARCH ─────────────────────────────────────────────────────────────
+function filterFoodSearch() {
+  const q = document.getElementById('food-search').value.toLowerCase();
+  const box = document.getElementById('food-suggestions');
+  if (!q) { box.style.display = 'none'; selectedFood = null; calcPreview(); updateAmountLabel(null); return }
+  const matches = foods.filter(f => f.name.toLowerCase().includes(q)).slice(0, 10);
+  if (!matches.length) { box.style.display = 'none'; return }
+  box.style.display = 'block';
+  box.innerHTML = matches.map(f => `<div class="suggestion-item" onmousedown="selectFood('${f.id}')">
+    <span>${f.name}</span>
+    <span style="font-size:11px;color:var(--text-tertiary)">${f.unitName} · ${f.state}</span>
+  </div>`).join('');
+}
+
+function selectFood(id) {
+  selectedFood = foods.find(f => f.id === id);
+  document.getElementById('food-search').value = selectedFood.name;
+  document.getElementById('food-suggestions').style.display = 'none';
+  updateAmountLabel(selectedFood);
+  calcPreview();
+}
+
+function updateAmountLabel(food) {
+  const hint = document.getElementById('unit-hint');
+  const lbl = document.getElementById('amount-label');
+  if (!food) { hint.style.display = 'none'; lbl.textContent = 'Amount (g)'; return }
+  if (food.unit === 'fixed') {
+    lbl.textContent = `Quantity (${food.unitName}s)`;
+    hint.style.display = 'block';
+    hint.innerHTML = `<i class="ti ti-info-circle" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>Fixed · P:${food.p}g C:${food.c}g F:${food.f}g per ${food.unitName}`;
+  } else {
+    lbl.textContent = 'Amount (g)';
+    hint.style.display = 'block';
+    hint.innerHTML = `<i class="ti ti-info-circle" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>Per gram · P:${food.p} C:${food.c} F:${food.f} · ${food.state}`;
+  }
+}
+
+function calcPreview() {
+  const a = parseFloat(document.getElementById('entry-amount').value) || 0;
+  if (!selectedFood || !a) {
+    ['prev-p', 'prev-c', 'prev-f'].forEach(id => document.getElementById(id).textContent = '—'); return;
+  }
+  document.getElementById('prev-p').textContent = (selectedFood.p * a).toFixed(1) + 'g';
+  document.getElementById('prev-c').textContent = (selectedFood.c * a).toFixed(1) + 'g';
+  document.getElementById('prev-f').textContent = (selectedFood.f * a).toFixed(1) + 'g';
+}
+
+// ─── HISTORY PAGE ─────────────────────────────────────────────────────────────
+async function loadHistory() {
+  const from = document.getElementById('hist-from').value;
+  const to = document.getElementById('hist-to').value;
+  try {
+    const grouped = await apiFetch(`/log?from=${from}&to=${to}`);
+    const rows = Object.keys(grouped).sort().map(d => {
+      let p = 0, c = 0, f = 0;
+      grouped[d].forEach(e => { const m = calcMacros(e); p += m.p; c += m.c; f += m.f });
+      return { d, p: +p.toFixed(1), c: +c.toFixed(1), f: +f.toFixed(1), kcal: Math.round(p * 4 + c * 4 + f * 9) };
+    });
+    const tbody = document.getElementById('hist-tbody');
+    if (!rows.length) { tbody.innerHTML = `<tr><td colspan="6" class="empty">No entries in this range</td></tr>`; renderHistChart([]); return }
+    tbody.innerHTML = rows.map(r => {
+      const tot = r.p + r.c + r.f || 1;
+      return `<tr>
+        <td>${fmtDate(r.d)}</td>
+        <td class="r"><span class="pill pill-p">${r.p}g</span></td>
+        <td class="r"><span class="pill pill-c">${r.c}g</span></td>
+        <td class="r"><span class="pill pill-f">${r.f}g</span></td>
+        <td class="r">${r.kcal}</td>
+        <td><div class="macro-bar">
+          <div style="width:${Math.round(r.p / tot * 100)}%;background:#7F77DD;min-width:${r.p ? 2 : 0}px"></div>
+          <div style="width:${Math.round(r.c / tot * 100)}%;background:#1D9E75;min-width:${r.c ? 2 : 0}px"></div>
+          <div style="width:${Math.round(r.f / tot * 100)}%;background:#D85A30;min-width:${r.f ? 2 : 0}px"></div>
+        </div></td>
+      </tr>`;
+    }).join('');
+    renderHistChart(rows);
+  } catch (e) { /* handled */ }
+}
+
+function renderHistChart(rows) {
+  const ctx = document.getElementById('hist-chart').getContext('2d');
+  if (histChart) histChart.destroy();
+  if (!rows.length) return;
+  histChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => fmtDate(r.d)),
+      datasets: [
+        { label: 'Protein', data: rows.map(r => r.p), backgroundColor: '#7F77DD', stack: 's' },
+        { label: 'Carbs', data: rows.map(r => r.c), backgroundColor: '#1D9E75', stack: 's' },
+        { label: 'Fat', data: rows.map(r => r.f), backgroundColor: '#D85A30', stack: 's' },
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { stacked: true, ticks: { autoSkip: true, maxTicksLimit: 14 } }, y: { stacked: true, ticks: { callback: v => v + 'g' } } } }
+  });
+}
+
+// ─── FOODS PAGE ───────────────────────────────────────────────────────────────
+function renderFoodsTable() {
+  const q = (document.getElementById('food-db-search').value || '').toLowerCase();
+  const tbody = document.getElementById('foods-tbody');
+  const filtered = foods.filter(f => f.name.toLowerCase().includes(q) || f.cat.toLowerCase().includes(q));
+  if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty">No foods found</td></tr>`; return }
+  tbody.innerHTML = filtered.map(f => `<tr>
+    <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.name}">${f.name}</td>
+    <td style="font-size:11px;color:var(--text-secondary)">${f.cat}</td>
+    <td style="font-size:11px;color:var(--text-secondary)">${f.unitName}</td>
+    <td style="font-size:11px;color:var(--text-secondary)">${f.state || ''}</td>
+    <td class="r">${f.p}</td><td class="r">${f.c}</td><td class="r">${f.f}</td>
+    <td class="act">
+      <button class="btn edit" style="margin-right:3px" onclick="editFood('${f.id}')"><i class="ti ti-edit"></i></button>
+      <button class="btn danger" onclick="deleteFood('${f.id}')"><i class="ti ti-trash"></i></button>
+    </td>
+  </tr>`).join('');
+}
+
+async function saveFood() {
+  const name = document.getElementById('fd-name').value.trim();
+  const cat = document.getElementById('fd-cat').value;
+  const unit = document.getElementById('fd-unit').value;
+  const unitName = document.getElementById('fd-unit-name').value.trim() || (unit === 'g' ? '1g' : 'Unit');
+  const p = parseFloat(document.getElementById('fd-p').value);
+  const c = parseFloat(document.getElementById('fd-c').value) || 0;
+  const f = parseFloat(document.getElementById('fd-f').value) || 0;
+  const state = document.getElementById('fd-state').value;
+  if (!name) { showToast('Enter a food name'); return }
+  if (isNaN(p)) { showToast('Enter protein value'); return }
+  const id = editFoodId || fid();
+  try {
+    const saved = await apiFetch('/foods', { method: 'POST', body: JSON.stringify({ id, name, cat, unit, unitName, p, c, f, state }) });
+    const idx = foods.findIndex(x => x.id === id);
+    if (idx > -1) foods[idx] = saved; else foods.push(saved);
+    renderFoodsTable();
+    clearFoodForm();
+    showToast('Food saved');
+  } catch (e) { /* handled */ }
+}
+
+function editFood(id) {
+  const f = foods.find(x => x.id === id); if (!f) return;
+  editFoodId = id;
+  document.getElementById('fd-name').value = f.name;
+  document.getElementById('fd-cat').value = f.cat;
+  document.getElementById('fd-unit').value = f.unit || 'g';
+  document.getElementById('fd-unit-name').value = f.unitName || '';
+  document.getElementById('fd-p').value = f.p;
+  document.getElementById('fd-c').value = f.c;
+  document.getElementById('fd-f').value = f.f;
+  document.getElementById('fd-state').value = f.state || 'Cooked';
+  document.getElementById('fd-cancel-btn').style.display = 'inline-flex';
+  document.getElementById('food-form-title').textContent = 'Edit food';
+  toggleUnitFields();
+  document.getElementById('fd-name').focus();
+  document.getElementById('fd-name').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function deleteFood(id) {
+  if (!confirm('Delete this food from the database?')) return;
+  try {
+    await apiFetch(`/foods/${id}`, { method: 'DELETE' });
+    foods = foods.filter(f => f.id !== id);
+    renderFoodsTable();
+    showToast('Food deleted');
+  } catch (e) { /* handled */ }
+}
+
+function clearFoodForm() {
+  editFoodId = null;
+  ['fd-name', 'fd-p', 'fd-c', 'fd-f', 'fd-unit-name'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('fd-cat').value = 'poultry';
+  document.getElementById('fd-unit').value = 'g';
+  document.getElementById('fd-state').value = 'Cooked';
+  document.getElementById('fd-cancel-btn').style.display = 'none';
+  document.getElementById('food-form-title').textContent = 'Add food';
+  toggleUnitFields();
+}
+
+function toggleUnitFields() {
+  const isFixed = document.getElementById('fd-unit').value === 'fixed';
+  const lbl = isFixed ? 'per unit' : 'per 1g';
+  document.getElementById('fd-p-label').textContent = 'Protein (' + lbl + ')';
+  document.getElementById('fd-c-label').textContent = 'Carbs (' + lbl + ')';
+  document.getElementById('fd-f-label').textContent = 'Fat (' + lbl + ')';
+}
+
+// ─── IMPORT / EXPORT ──────────────────────────────────────────────────────────
+function handleCSV(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const lines = e.target.result.trim().split('\n').map(l => l.split(/[,\t]/));
+    const h = lines[0].map(x => x.trim().toLowerCase().replace(/"/g, ''));
+    const di = h.indexOf('date'), fi = h.indexOf('food'), ai = h.indexOf('amount');
+    const pi = h.indexOf('protein'), ci = h.indexOf('carbs'), fli = h.indexOf('fat'), mi = h.indexOf('meal');
+    if (di < 0 || fi < 0 || ai < 0) {
+      document.getElementById('import-preview').innerHTML = `<p style="color:var(--text-danger);font-size:13px;margin-top:8px"><i class="ti ti-alert-circle"></i> Missing columns: date, food, amount</p>`;
+      return;
+    }
+    let imported = 0, skipped = 0;
+    for (const row of lines.slice(1)) {
+      const date = (row[di] || '').trim().replace(/"/g, '');
+      const fname = (row[fi] || '').trim().replace(/"/g, '');
+      const amount = parseFloat(row[ai]);
+      const p = parseFloat(row[pi]) || 0, c = parseFloat(row[ci]) || 0, f = parseFloat(row[fli]) || 0;
+      const meal = mi >= 0 ? (row[mi] || '').trim().replace(/"/g, '') : '';
+      if (!date || !fname || !amount) { skipped++; continue }
+      try {
+        await apiFetch('/log', {
+          method: 'POST',
+          body: JSON.stringify({
+            id: uid(), date, foodId: 'imported', foodName: fname,
+            p: amount > 0 ? p / amount : p, c: amount > 0 ? c / amount : c, fat: amount > 0 ? f / amount : f,
+            unit: 'g', unitName: '1g', amount, meal
+          })
+        });
+        imported++;
+      } catch (e) { skipped++ }
+    }
+    document.getElementById('import-preview').innerHTML = `<p style="font-size:13px;color:var(--text-success);margin-top:8px"><i class="ti ti-check"></i> Imported ${imported} entries${skipped ? ' (' + skipped + ' skipped)' : ''}</p>`;
+    showToast(`Imported ${imported} entries`);
+  };
+  reader.readAsText(file);
+}
+
+async function exportCSV() {
+  try {
+    const grouped = await apiFetch('/log');
+    const header = 'date,food,meal,amount,unit,protein,carbs,fat';
+    const rows = [];
+    Object.keys(grouped).sort().forEach(date => {
+      grouped[date].forEach(e => {
+        const m = calcMacros(e);
+        rows.push([date, `"${e.foodName}"`, `"${e.meal || ''}"`, e.amount, e.unitName || 'g', m.p, m.c, m.f].join(','));
+      });
+    });
+    if (!rows.length) { showToast('No data to export'); return }
+    const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'macro_log.csv';
+    a.click();
+  } catch (e) { /* handled */ }
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+async function init() {
+  document.getElementById('log-date').value = todayStr();
+  const hd = new Date(); hd.setDate(hd.getDate() - 13);
+  document.getElementById('hist-from').value = hd.toISOString().slice(0, 10);
+  document.getElementById('hist-to').value = todayStr();
+  toggleUnitFields();
+
+  try {
+    foods = await apiFetch('/foods');
+    await loadDayEntries();
+    document.getElementById('loading-overlay').style.display = 'none';
+  } catch (e) {
+    document.getElementById('loading-overlay').innerHTML = `
+      <div style="text-align:center">
+        <i class="ti ti-server-off" style="font-size:40px;color:var(--text-tertiary);display:block;margin-bottom:12px"></i>
+        <p style="font-size:14px;color:var(--text-secondary)">Cannot reach the server.</p>
+        <p style="font-size:13px;color:var(--text-tertiary);margin-top:4px">Check your API_KEY and that the backend is running.</p>
+        <button class="btn" style="margin-top:16px" onclick="init()">Retry</button>
+      </div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
