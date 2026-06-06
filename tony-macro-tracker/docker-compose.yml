@@ -32,6 +32,6 @@ services:
     container_name: macro-tracker-frontend
     restart: on-failure
     ports:
-      - "8069:8069"
+      - "8069:80"
     depends_on:
       - api
