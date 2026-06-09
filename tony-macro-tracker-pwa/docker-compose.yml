@@ -3,12 +3,14 @@ services:
     image: postgres:16-alpine
     container_name: macro-tracker-db-pwa
     restart: on-failure
+    networks:
+      - pwa_internal
     environment:
       POSTGRES_DB: macrotracker
       POSTGRES_USER: macrouser
       POSTGRES_PASSWORD: changeme123
     volumes:
-      - ${APP_DATA_DIR}/db:/var/lib/postgresql/data
+      - ./data/db:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U macrouser -d macrotracker"]
       interval: 10s
@@ -19,6 +21,9 @@ services:
     image: tonybooom/macro-tracker-api:latest
     container_name: macro-tracker-api-pwa
     restart: on-failure
+    networks:
+      - pwa_internal
+      - umbrel_main_network
     environment:
       DATABASE_URL: postgres://macrouser:changeme123@db:5432/macrotracker
       API_SECRET: myapisecret123
@@ -31,7 +36,16 @@ services:
     image: tonybooom/macro-tracker-frontend:feature-pwa
     container_name: macro-tracker-frontend-pwa
     restart: on-failure
+    networks:
+      - pwa_internal
+      - umbrel_main_network
     ports:
       - "8070:80"
     depends_on:
       - api
+
+networks:
+  pwa_internal:
+    driver: bridge
+  umbrel_main_network:
+    external: true
