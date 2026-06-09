@@ -4,15 +4,30 @@
   "description": "Personal macro and nutrition tracker",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5f5f3",
+  "background_color": "#7F77DD",
   "theme_color": "#7F77DD",
   "orientation": "portrait-primary",
+  "prefer_related_applications": false,
+  "screenshots": [
+    {
+      "src": "/2515263.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%237F77DD'/><text y='140' font-size='120' text-anchor='middle' x='96'>🥗</text></svg>",
+      "src": "/1047711.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/1047711.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
