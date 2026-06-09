@@ -1,0 +1,24 @@
+manifestVersion: 1
+id: tony-macro-tracker-pwa
+name: Macro Tracker (PWA beta)
+tagline: Personal macro and nutrition tracker
+icon: https://cdn-icons-png.flaticon.com/512/2515/2515263.png
+category: files & productivity
+version: "1.0.0"
+port: 8070
+description: >-
+  A self-hosted macro and nutrition tracking app. Log daily food entries,
+  track protein, carbs and fat, view history charts, and manage your
+  personal food database. Built with Node/Express and PostgreSQL.
+developer: Tony
+website: ""
+submitter: Tony
+submission: ""
+repo: ""
+support: ""
+gallery: []
+releaseNotes: "Initial release."
+dependencies: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
