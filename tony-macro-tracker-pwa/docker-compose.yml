@@ -20,7 +20,7 @@ services:
     container_name: macro-tracker-api-pwa
     restart: on-failure
     environment:
-      DATABASE_URL: postgres://macrouser:changeme123@macro-tracker-db:5432/macrotracker
+      DATABASE_URL: postgres://macrouser:changeme123@macro-tracker-db-pwa:5432/macrotracker
       API_SECRET: myapisecret123
       NODE_ENV: production
     depends_on:
