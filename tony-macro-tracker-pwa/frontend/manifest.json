@@ -1,0 +1,39 @@
+{
+  "name": "Macro Tracker",
+  "short_name": "Macros",
+  "description": "Personal macro and nutrition tracker",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#7F77DD",
+  "theme_color": "#7F77DD",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false,
+  "screenshots": [
+    {
+      "src": "/2515263.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/2515263.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "icons": [
+    {
+      "src": "/1047711.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/1047711.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
