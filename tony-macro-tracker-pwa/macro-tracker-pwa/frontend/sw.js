@@ -3,44 +3,55 @@ const OFFLINE_DB = 'macro-tracker-offline';
 const OFFLINE_QUEUE_STORE = 'sync-queue';
 const SNAPSHOT_STORE = 'data-snapshot';
 
-const STATIC_ASSETS = ['/', '/index.html'];
+// Files to cache for offline use
+const STATIC_ASSETS = [
+  '/',
+  '/index.html',
+  'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css',
+  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js'
+];
 
-// ─── INSTALL ──────────────────────────────────────────────────────────────────
+// ─── INSTALL: cache static assets ────────────────────────────────────────────
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(STATIC_ASSETS))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache => {
+      // Cache local assets — external ones best-effort
+      return cache.addAll(['/', '/index.html']).then(() => {
+        return Promise.allSettled(
+          STATIC_ASSETS.slice(2).map(url => cache.add(url).catch(() => {}))
+        );
+      });
+    }).then(() => self.skipWaiting())
   );
 });
 
-// ─── ACTIVATE ─────────────────────────────────────────────────────────────────
+// ─── ACTIVATE: clean old caches ──────────────────────────────────────────────
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
-      .then(() => self.clients.claim())
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
   );
 });
 
-// ─── FETCH ────────────────────────────────────────────────────────────────────
+// ─── FETCH: serve from cache when offline ────────────────────────────────────
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // API calls — pass through, return offline error if failed
-  if (url.pathname.startsWith('/api/') || url.pathname === '/health') {
+  // Let API calls through — handle offline in the app layer via queue
+  if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      fetch(event.request).catch(() =>
-        new Response(JSON.stringify({ offline: true, error: 'Offline' }), {
+      fetch(event.request).catch(() => {
+        return new Response(JSON.stringify({ offline: true, error: 'Offline' }), {
           status: 503,
           headers: { 'Content-Type': 'application/json' }
-        })
-      )
+        });
+      })
     );
     return;
   }
 
-  // Everything else — cache first, fallback to network, fallback to index.html
+  // For everything else: cache-first, fallback to network, fallback to index.html
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
@@ -55,22 +66,28 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// ─── MESSAGES ─────────────────────────────────────────────────────────────────
+// ─── MESSAGE: trigger sync from app ──────────────────────────────────────────
 self.addEventListener('message', event => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
-  if (event.data === 'SYNC_NOW') event.waitUntil(processQueue());
+  if (event.data === 'SYNC_NOW') {
+    event.waitUntil(processQueue());
+  }
 });
 
 // ─── BACKGROUND SYNC ─────────────────────────────────────────────────────────
 self.addEventListener('sync', event => {
-  if (event.tag === 'macro-sync') event.waitUntil(processQueue());
+  if (event.tag === 'macro-sync') {
+    event.waitUntil(processQueue());
+  }
 });
 
 async function processQueue() {
   const db = await openOfflineDB();
   const queue = await getAllFromStore(db, OFFLINE_QUEUE_STORE);
   if (!queue.length) return;
+
   const API_KEY = await getAPIKey(db);
+
   for (const item of queue) {
     try {
       const res = await fetch(item.url, {
@@ -78,9 +95,16 @@ async function processQueue() {
         headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
         body: item.body ? JSON.stringify(item.body) : undefined
       });
-      if (res.ok) await deleteFromStore(db, OFFLINE_QUEUE_STORE, item.id);
-    } catch (e) { break; }
+      if (res.ok) {
+        await deleteFromStore(db, OFFLINE_QUEUE_STORE, item.id);
+      }
+    } catch (e) {
+      // Still offline — leave in queue
+      break;
+    }
   }
+
+  // Notify all open clients that sync is done
   const clients = await self.clients.matchAll();
   clients.forEach(client => client.postMessage({ type: 'SYNC_COMPLETE' }));
 }
@@ -126,7 +150,7 @@ function deleteFromStore(db, storeName, id) {
 }
 
 async function getAPIKey(db) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const tx = db.transaction('config', 'readonly');
     const req = tx.objectStore('config').get('apiKey');
     req.onsuccess = e => resolve(e.target.result?.value || 'myapisecret123');

@@ -1,15 +1,15 @@
 manifestVersion: 1
 id: tony-macro-tracker-pwa
 name: Macro Tracker (PWA beta)
-tagline: Offline-capable macro tracker with home screen install
+tagline: Personal macro and nutrition tracker
 icon: https://cdn-icons-png.flaticon.com/512/2515/2515263.png
 category: files & productivity
-version: "1.1.0"
+version: "1.0.0"
 port: 8070
 description: >-
-  PWA beta of Macro Tracker. Works offline — log entries away from home
-  and syncs automatically when you reconnect to your Pi. Install to your
-  Android home screen for a native app experience.
+  A self-hosted macro and nutrition tracking app. Log daily food entries,
+  track protein, carbs and fat, view history charts, and manage your
+  personal food database. Built with Node/Express and PostgreSQL.
 developer: Tony
 website: ""
 submitter: Tony
@@ -17,7 +17,7 @@ submission: ""
 repo: ""
 support: ""
 gallery: []
-releaseNotes: "PWA with offline support and home screen install."
+releaseNotes: "Initial release."
 dependencies: []
 path: ""
 defaultUsername: ""

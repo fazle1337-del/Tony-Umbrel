@@ -1,61 +1,119 @@
-# Macro Tracker PWA — Feature Branch
+# Macro Tracker
 
-Offline-capable PWA version for testing before promoting to production.
+A self-hosted macro tracking app. Stack: Nginx + Node/Express + PostgreSQL, all in Docker.
 
-## What's different from the main app
+## Quick Start
 
-- Service worker caches the app shell — loads offline after first visit
-- IndexedDB queue stores changes made offline
-- Auto-syncs queue when Pi is detected on home network (polls every 30s)
-- PWA install banner on Android Chrome
-- Isolated Docker network — won't interfere with production app
+### 1. Clone / copy files to your Pi
 
-## Deploy to Pi
-
-### 1. Copy folder into your app store repo
 ```bash
-cp -r tony-macro-tracker-pwa/ ~/umbrel/app-stores/fazle1337-tony-umbrel-192-6304cbed/
+scp -r macro-tracker/ umbrel@YOUR_PI_IP:~/macro-tracker
+ssh umbrel@YOUR_PI_IP
+cd ~/macro-tracker
 ```
 
-### 2. Commit and push to Gitea
+### 2. Create your .env file
+
 ```bash
-cd ~/umbrel/app-stores/fazle1337-tony-umbrel-192-6304cbed/
-git add tony-macro-tracker-pwa/
-git commit -m "feat: add PWA beta app"
-git push origin master
+cp .env.example .env
+nano .env
 ```
 
-### 3. Pull on Pi and build frontend image
-```bash
-cd ~/umbrel/app-stores/fazle1337-tony-umbrel-192-6304cbed
-git pull origin master
-
-cd tony-macro-tracker-pwa
-sudo docker build --no-cache -t tonybooom/macro-tracker-frontend:feature-pwa ./frontend
-
-# Verify all files are in the image
-sudo docker run --rm tonybooom/macro-tracker-frontend:feature-pwa ls /usr/share/nginx/html/
-# Should show: 50x.html  index.html  manifest.json  sw.js
-
-sudo docker push tonybooom/macro-tracker-frontend:feature-pwa
+Fill in:
+```
+DB_PASSWORD=pick_a_strong_password
+API_SECRET=run_openssl_rand_hex_32_to_generate
 ```
 
-### 4. Install from Umbrel UI
-Refresh your app store in Umbrel and install "Macro Tracker (PWA beta)".
-
-### 5. Verify PWA files are served
+Generate a secret:
 ```bash
-curl -I http://192.168.1.118:8070/sw.js        # should be 200
-curl -I http://192.168.1.118:8070/manifest.json # should be 200
+openssl rand -hex 32
 ```
 
-### 6. Install on Android
-Open `http://192.168.1.118:8070` in Chrome → banner appears → tap Install.
+### 3. Set your API key in the frontend
 
-## Promoting to production
+Open `frontend/index.html` and find this line near the bottom:
 
-When happy with the PWA version:
-1. Copy frontend files into `tony-macro-tracker/frontend/`
-2. Rebuild `tonybooom/macro-tracker-frontend:latest`
-3. Push and restart production app
-4. Uninstall `tony-macro-tracker-pwa` from Umbrel
+```js
+const API_KEY = window.API_KEY || 'REPLACE_WITH_YOUR_API_SECRET';
+```
+
+Replace `REPLACE_WITH_YOUR_API_SECRET` with the same value you put in `API_SECRET` in `.env`.
+
+### 4. Build and start
+
+```bash
+docker compose up -d --build
+```
+
+App is now at: `http://YOUR_PI_IP:8080`
+
+---
+
+## Accessing from other devices
+
+On your local network: `http://YOUR_PI_IP:8080`
+
+Find your Pi's IP:
+```bash
+hostname -I
+```
+
+To access from outside your home network, set up Tailscale (recommended for Umbrel):
+- Tailscale is available in the Umbrel App Store
+- Once installed, use your Tailscale IP: `http://YOUR_TAILSCALE_IP:8080`
+
+---
+
+## Useful commands
+
+```bash
+# View logs
+docker compose logs -f
+
+# Stop
+docker compose down
+
+# Restart
+docker compose restart
+
+# Update after code changes
+docker compose up -d --build
+
+# Backup database
+docker exec macro-tracker-db pg_dump -U macrouser macrotracker > backup_$(date +%F).sql
+
+# Restore database
+cat backup_YYYY-MM-DD.sql | docker exec -i macro-tracker-db psql -U macrouser macrotracker
+```
+
+---
+
+## Adding multi-user support (future)
+
+The API is structured to make this easy:
+1. Add a `users` table with `id`, `username`, `password_hash`
+2. Replace the `x-api-key` middleware with JWT auth (`jsonwebtoken` package)
+3. Add `user_id` foreign key to `log_entries` and `foods`
+4. Add `/auth/login` and `/auth/register` endpoints
+5. Frontend: add a login screen that stores the JWT in localStorage
+
+---
+
+## Project structure
+
+```
+macro-tracker/
+├── docker-compose.yml
+├── .env.example
+├── .gitignore
+├── README.md
+├── backend/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── server.js        ← Express API + DB schema + seed data
+└── frontend/
+    ├── Dockerfile
+    ├── nginx.conf        ← Proxies /api/* to backend (no CORS issues)
+    └── index.html        ← Full app, talks to /api/*
+```

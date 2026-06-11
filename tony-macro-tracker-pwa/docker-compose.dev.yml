@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: macro-tracker-db-pwa
+    container_name: macro-tracker-db
     restart: on-failure
     environment:
       POSTGRES_DB: macrotracker
@@ -17,7 +17,7 @@ services:
 
   api:
     image: tonybooom/macro-tracker-api:latest
-    container_name: macro-tracker-api-pwa
+    container_name: macro-tracker-api
     restart: on-failure
     environment:
       DATABASE_URL: postgres://macrouser:changeme123@macro-tracker-db:5432/macrotracker
@@ -28,8 +28,8 @@ services:
         condition: service_healthy
 
   frontend:
-    image: tonybooom/macro-tracker-frontend:feature-pwa
-    container_name: macro-tracker-frontend-pwa
+    image: tonybooom/macro-tracker-frontend:latest
+    container_name: macro-tracker-frontend
     restart: on-failure
     ports:
       - "8070:80"

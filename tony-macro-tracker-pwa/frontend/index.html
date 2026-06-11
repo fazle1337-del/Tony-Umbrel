@@ -4,11 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Macro Tracker</title>
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#7F77DD">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Macro Tracker">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -20,7 +15,6 @@
     --border-light:rgba(0,0,0,0.12);--border-med:rgba(0,0,0,0.22);
     --radius-md:8px;--radius-lg:12px;
     --font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-    --accent:#7F77DD;
   }
   @media(prefers-color-scheme:dark){:root{
     --bg-primary:#1e1e1c;--bg-secondary:#2a2a28;--bg-tertiary:#181816;
@@ -35,22 +29,14 @@
   header{background:var(--bg-primary);border-bottom:0.5px solid var(--border-light);padding:0 1rem;position:sticky;top:0;z-index:50}
   .header-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:52px;gap:12px}
   .logo{font-size:16px;font-weight:600;color:var(--text-primary);display:flex;align-items:center;gap:8px;white-space:nowrap}
-  .logo i{font-size:20px;color:var(--accent)}
+  .logo i{font-size:20px;color:#7F77DD}
   .nav{display:flex;gap:2px}
   .nav-btn{font-size:13px;padding:6px 12px;border:none;background:transparent;cursor:pointer;color:var(--text-secondary);border-radius:var(--radius-md);font-family:var(--font);display:flex;align-items:center;gap:4px;white-space:nowrap}
   .nav-btn:hover{background:var(--bg-secondary);color:var(--text-primary)}
   .nav-btn.active{background:var(--bg-secondary);color:var(--text-primary);font-weight:500}
-
-  /* Offline banner */
-  .offline-bar{background:#D85A30;color:#fff;font-size:12px;padding:6px 1rem;display:none;align-items:center;justify-content:space-between;gap:8px}
-  .offline-bar.show{display:flex}
-  .offline-bar .queue-count{background:rgba(255,255,255,0.2);border-radius:20px;padding:1px 8px;font-size:11px}
   .sync-status{font-size:11px;color:var(--text-tertiary);display:flex;align-items:center;gap:4px;white-space:nowrap}
-  .sync-status.syncing{color:var(--accent)}
+  .sync-status.syncing{color:#7F77DD}
   .sync-status.error{color:var(--text-danger)}
-  .sync-status.offline{color:#D85A30}
-  .sync-status.queued{color:#e8a838}
-
   main{padding:1.5rem 0}
   .page{display:none}.page.active{display:block}
   .card{background:var(--bg-primary);border:0.5px solid var(--border-light);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:1rem}
@@ -63,10 +49,10 @@
   .metric-val{font-size:22px;font-weight:500}
   .metric-val.prot{color:#7F77DD}.metric-val.carb{color:#1D9E75}.metric-val.fat{color:#D85A30}
   .date-nav{display:flex;align-items:center;gap:8px;margin-bottom:1rem}
-  .date-nav button{padding:5px 10px;border-radius:var(--radius-md);border:0.5px solid var(--border-med);background:var(--bg-primary);cursor:pointer;color:var(--text-secondary);font-size:13px;font-family:var(--font)}
-  .date-nav button:hover{background:var(--bg-secondary)}
+  .date-nav button,.btn-sm{padding:5px 10px;border-radius:var(--radius-md);border:0.5px solid var(--border-med);background:var(--bg-primary);cursor:pointer;color:var(--text-secondary);font-size:13px;font-family:var(--font)}
+  .date-nav button:hover,.btn-sm:hover{background:var(--bg-secondary)}
   input,select{width:100%;font-size:13px;padding:7px 10px;border:0.5px solid var(--border-med);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-primary);font-family:var(--font);outline:none}
-  input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(127,119,221,0.15)}
+  input:focus,select:focus{border-color:#7F77DD;box-shadow:0 0 0 2px rgba(127,119,221,0.15)}
   label{font-size:12px;color:var(--text-secondary);display:block;margin-bottom:3px}
   .form-row{display:grid;gap:10px;margin-bottom:10px}
   .cols2{grid-template-columns:1fr 1fr}.cols3{grid-template-columns:1fr 1fr 1fr}
@@ -90,7 +76,6 @@
   .tot-row td{font-weight:500;background:var(--bg-secondary);color:var(--text-primary)!important}
   .pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:20px}
   .pill-p{background:#EEEDFE;color:#3C3489}.pill-c{background:#E1F5EE;color:#085041}.pill-f{background:#FAECE7;color:#712B13}
-  .pill-offline{background:#faeeda;color:#633806;font-size:10px;padding:1px 5px;border-radius:10px;margin-left:4px}
   .search-wrap{position:relative}
   .search-wrap input{padding-left:32px}
   .search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--text-tertiary);pointer-events:none}
@@ -108,41 +93,20 @@
   .upload-zone:hover{background:var(--bg-secondary)}
   .upload-zone i{font-size:32px;color:var(--text-tertiary)}
   .upload-zone p{font-size:13px;color:var(--text-secondary);margin-top:8px}
-  .toast{position:fixed;bottom:24px;right:24px;background:var(--text-primary);color:var(--bg-primary);padding:10px 16px;border-radius:var(--radius-md);font-size:13px;opacity:0;transition:opacity 0.2s;pointer-events:none;z-index:999;max-width:280px}
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--text-primary);color:var(--bg-primary);padding:10px 16px;border-radius:var(--radius-md);font-size:13px;opacity:0;transition:opacity 0.2s;pointer-events:none;z-index:999}
   .toast.show{opacity:1}
   .macro-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;gap:1px}
   .relative{position:relative}
   code{font-family:monospace;background:var(--bg-secondary);padding:1px 5px;border-radius:4px;font-size:12px}
   .loading-overlay{position:fixed;inset:0;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;z-index:200;font-size:14px;color:var(--text-secondary);gap:10px}
-  .spinner{width:20px;height:20px;border:2px solid var(--border-med);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite}
+  .spinner{width:20px;height:20px;border:2px solid var(--border-med);border-top-color:#7F77DD;border-radius:50%;animation:spin 0.7s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
-
-  /* Install prompt */
-  .install-banner{background:var(--accent);color:#fff;padding:10px 1rem;display:none;align-items:center;justify-content:space-between;gap:12px;font-size:13px}
-  .install-banner.show{display:flex}
-  .install-banner button{background:rgba(255,255,255,0.2);border:none;color:#fff;padding:5px 12px;border-radius:var(--radius-md);cursor:pointer;font-size:13px}
-  .install-banner button:hover{background:rgba(255,255,255,0.3)}
 </style>
 </head>
 <body>
 
 <div id="loading-overlay" class="loading-overlay">
-  <div class="spinner"></div> Loading…
-</div>
-
-<!-- PWA install prompt -->
-<div class="install-banner" id="install-banner">
-  <span><i class="ti ti-download" style="margin-right:6px"></i>Install Macro Tracker on your home screen for offline use</span>
-  <div style="display:flex;gap:8px">
-    <button onclick="installPWA()">Install</button>
-    <button onclick="dismissInstall()" style="background:transparent">✕</button>
-  </div>
-</div>
-
-<!-- Offline banner -->
-<div class="offline-bar" id="offline-bar">
-  <span><i class="ti ti-wifi-off" style="margin-right:6px"></i>Offline — changes are saved locally and will sync when you get home</span>
-  <span class="queue-count" id="queue-count-badge">0 pending</span>
+  <div class="spinner"></div> Connecting to server…
 </div>
 
 <header>
@@ -205,13 +169,13 @@
         <div style="overflow-x:auto">
         <table>
           <thead><tr>
-            <th style="width:28%">Food</th>
-            <th style="width:12%">Meal</th>
+            <th style="width:30%">Food</th>
+            <th style="width:13%">Meal</th>
             <th class="r" style="width:13%">Amount</th>
             <th class="r" style="width:12%">Protein</th>
             <th class="r" style="width:12%">Carbs</th>
             <th class="r" style="width:12%">Fat</th>
-            <th style="width:11%"></th>
+            <th style="width:8%"></th>
           </tr></thead>
           <tbody id="log-tbody"></tbody>
         </table>
@@ -231,7 +195,7 @@
           <span><span class="sq" style="background:#1D9E75"></span>Carbs</span>
           <span><span class="sq" style="background:#D85A30"></span>Fat</span>
         </div>
-        <div style="position:relative;height:200px"><canvas id="macro-donut">Macro split</canvas></div>
+        <div style="position:relative;height:200px"><canvas id="macro-donut" role="img" aria-label="Macro split donut chart">Macro split</canvas></div>
       </div>
     </div>
   </div>
@@ -269,7 +233,7 @@
       <span><span class="sq" style="background:#1D9E75"></span>Carbs</span>
       <span><span class="sq" style="background:#D85A30"></span>Fat</span>
     </div>
-    <div style="position:relative;height:240px"><canvas id="hist-chart">History chart</canvas></div>
+    <div style="position:relative;height:240px"><canvas id="hist-chart" role="img" aria-label="Daily macro history chart">History chart</canvas></div>
   </div>
 </div>
 
@@ -314,9 +278,13 @@
     <div style="overflow-x:auto">
     <table>
       <thead><tr>
-        <th style="width:26%">Name</th><th style="width:9%">Cat</th><th style="width:10%">Unit</th>
-        <th style="width:8%">State</th><th class="r" style="width:12%">Protein</th>
-        <th class="r" style="width:12%">Carbs</th><th class="r" style="width:12%">Fat</th>
+        <th style="width:26%">Name</th>
+        <th style="width:9%">Cat</th>
+        <th style="width:10%">Unit</th>
+        <th style="width:8%">State</th>
+        <th class="r" style="width:12%">Protein</th>
+        <th class="r" style="width:12%">Carbs</th>
+        <th class="r" style="width:12%">Fat</th>
         <th style="width:11%"></th>
       </tr></thead>
       <tbody id="foods-tbody"></tbody>
@@ -330,7 +298,7 @@
   <div class="card">
     <div class="section-title">Import from spreadsheet</div>
     <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
-      CSV with columns: <code>date</code> <code>food</code> <code>amount</code> <code>protein</code> <code>carbs</code> <code>fat</code>. Optional: <code>meal</code>.
+      CSV with columns: <code>date</code> <code>food</code> <code>amount</code> <code>protein</code> <code>carbs</code> <code>fat</code>. Optional: <code>meal</code>. Header row required.
     </p>
     <div class="upload-zone" onclick="document.getElementById('csv-input').click()">
       <i class="ti ti-file-upload"></i>
@@ -338,15 +306,6 @@
       <input type="file" id="csv-input" accept=".csv,.tsv" style="display:none" onchange="handleCSV(this)">
     </div>
     <div id="import-preview"></div>
-  </div>
-  <div class="card">
-    <div class="section-title">Offline queue</div>
-    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Changes made offline waiting to sync to your Pi.</p>
-    <div id="queue-display" style="font-size:13px;color:var(--text-secondary)">No pending changes.</div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn" onclick="showQueue()"><i class="ti ti-refresh"></i> Refresh</button>
-      <button class="btn primary" onclick="forceSync()" id="sync-now-btn" style="display:none"><i class="ti ti-cloud-upload"></i> Sync now</button>
-    </div>
   </div>
   <div class="card">
     <div class="section-title">Export log</div>
@@ -360,215 +319,49 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const API_KEY = 'myapisecret123';
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+// API_KEY is injected at runtime from the .env file via nginx env substitution
+// For simplicity we read it from a meta tag set by the build, or fall back to
+// a placeholder that you replace before deploying.
+const API_KEY = window.API_KEY || 'myapisecret123';
 const API_BASE = '/api';
-const OFFLINE_DB_NAME = 'macro-tracker-offline';
-const QUEUE_STORE = 'sync-queue';
-const SNAPSHOT_STORE = 'data-snapshot';
 
-// ─── STATE ───────────────────────────────────────────────────────────────────
+// ─── STATE ────────────────────────────────────────────────────────────────────
 let foods = [];
 let dayEntries = [];
 let editFoodId = null;
 let selectedFood = null;
 let donutChart = null;
 let histChart = null;
-let isOnline = navigator.onLine;
-let offlineDB = null;
-let deferredInstallPrompt = null;
 
-// ─── INDEXEDDB SETUP ─────────────────────────────────────────────────────────
-function openOfflineDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(OFFLINE_DB_NAME, 2);
-    req.onupgradeneeded = e => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(QUEUE_STORE)) {
-        const qs = db.createObjectStore(QUEUE_STORE, { keyPath: 'id', autoIncrement: true });
-        qs.createIndex('timestamp', 'timestamp');
-      }
-      if (!db.objectStoreNames.contains(SNAPSHOT_STORE)) {
-        db.createObjectStore(SNAPSHOT_STORE, { keyPath: 'key' });
-      }
-      if (!db.objectStoreNames.contains('config')) {
-        db.createObjectStore('config', { keyPath: 'key' });
-      }
-    };
-    req.onsuccess = e => resolve(e.target.result);
-    req.onerror = e => reject(e.target.error);
-  });
-}
-
-function dbGet(store, key) {
-  return new Promise((resolve, reject) => {
-    const tx = offlineDB.transaction(store, 'readonly');
-    const req = tx.objectStore(store).get(key);
-    req.onsuccess = e => resolve(e.target.result);
-    req.onerror = e => reject(e.target.error);
-  });
-}
-
-function dbPut(store, value) {
-  return new Promise((resolve, reject) => {
-    const tx = offlineDB.transaction(store, 'readwrite');
-    const req = tx.objectStore(store).put(value);
-    req.onsuccess = e => resolve(e.target.result);
-    req.onerror = e => reject(e.target.error);
-  });
-}
-
-function dbDelete(store, key) {
-  return new Promise((resolve, reject) => {
-    const tx = offlineDB.transaction(store, 'readwrite');
-    const req = tx.objectStore(store).delete(key);
-    req.onsuccess = () => resolve();
-    req.onerror = e => reject(e.target.error);
-  });
-}
-
-function dbGetAll(store) {
-  return new Promise((resolve, reject) => {
-    const tx = offlineDB.transaction(store, 'readonly');
-    const req = tx.objectStore(store).getAll();
-    req.onsuccess = e => resolve(e.target.result);
-    req.onerror = e => reject(e.target.error);
-  });
-}
-
-// ─── SNAPSHOT (offline data cache) ───────────────────────────────────────────
-async function saveSnapshot(key, data) {
-  await dbPut(SNAPSHOT_STORE, { key, data, updatedAt: Date.now() });
-}
-
-async function loadSnapshot(key) {
-  const row = await dbGet(SNAPSHOT_STORE, key);
-  return row ? row.data : null;
-}
-
-// ─── OFFLINE QUEUE ───────────────────────────────────────────────────────────
-async function enqueue(url, method, body) {
-  const id = await dbPut(QUEUE_STORE, { url, method, body, timestamp: Date.now() });
-  updateOfflineUI();
-  return id;
-}
-
-async function getQueueLength() {
-  const items = await dbGetAll(QUEUE_STORE);
-  return items.length;
-}
-
-async function processQueue() {
-  const items = await dbGetAll(QUEUE_STORE);
-  if (!items.length) return true;
-  let allOk = true;
-  for (const item of items) {
-    try {
-      const res = await fetch(item.url, {
-        method: item.method,
-        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
-        body: item.body ? JSON.stringify(item.body) : undefined
-      });
-      if (res.ok) {
-        await dbDelete(QUEUE_STORE, item.id);
-      } else {
-        allOk = false; break;
-      }
-    } catch (e) {
-      allOk = false; break;
-    }
-  }
-  return allOk;
-}
-
-// ─── CONNECTIVITY ─────────────────────────────────────────────────────────────
-async function checkConnectivity() {
-  try {
-    const res = await fetch('/health', { method: 'GET', cache: 'no-store' });
-    return res.ok;
-  } catch (e) {
-    return false;
-  }
-}
-
-async function onCameOnline() {
-  isOnline = true;
-  updateOfflineUI();
-  setSyncStatus('syncing');
-  const ok = await processQueue();
-  if (ok) {
-    setSyncStatus('ok');
-    showToast('Back online — changes synced');
-    // Refresh current view with fresh server data
-    await loadFoods();
-    await loadDayEntries();
-  } else {
-    setSyncStatus('error');
-  }
-  updateOfflineUI();
-}
-
-function onWentOffline() {
-  isOnline = false;
-  updateOfflineUI();
-  setSyncStatus('offline');
-}
-
-async function updateOfflineUI() {
-  const qLen = await getQueueLength();
-  const bar = document.getElementById('offline-bar');
-  const badge = document.getElementById('queue-count-badge');
-  const syncBtn = document.getElementById('sync-now-btn');
-  if (!isOnline) {
-    bar.classList.add('show');
-    badge.textContent = qLen + ' pending';
-    setSyncStatus('offline');
-  } else {
-    bar.classList.remove('show');
-    if (qLen > 0) setSyncStatus('queued');
-  }
-  if (syncBtn) syncBtn.style.display = qLen > 0 && isOnline ? 'inline-flex' : 'none';
-}
-
-async function forceSync() {
-  setSyncStatus('syncing');
-  const ok = await processQueue();
-  if (ok) { setSyncStatus('ok'); showToast('Synced successfully'); await loadDayEntries(); }
-  else { setSyncStatus('error'); showToast('Sync failed — still offline?'); }
-  updateOfflineUI();
-}
-
-async function showQueue() {
-  const items = await dbGetAll(QUEUE_STORE);
-  const el = document.getElementById('queue-display');
-  if (!items.length) { el.textContent = 'No pending changes.'; return; }
-  el.innerHTML = items.map(i => `
-    <div style="padding:6px 0;border-bottom:0.5px solid var(--border-light);display:flex;justify-content:space-between">
-      <span>${i.method} ${i.url.replace(API_BASE,'')}</span>
-      <span style="color:var(--text-tertiary);font-size:11px">${new Date(i.timestamp).toLocaleTimeString()}</span>
-    </div>`).join('');
-  document.getElementById('sync-now-btn').style.display = isOnline ? 'inline-flex' : 'none';
-}
-
-// ─── API + OFFLINE FETCH ──────────────────────────────────────────────────────
+// ─── API HELPERS ──────────────────────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
-  if (isOnline) {
-    setSyncStatus('syncing');
-    try {
-      const res = await fetch(API_BASE + path, {
-        ...options,
-        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY, ...(options.headers || {}) }
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setSyncStatus('ok');
-      return { data, fromCache: false };
-    } catch (e) {
-      isOnline = false;
-      updateOfflineUI();
-      return { data: null, fromCache: false, error: e };
-    }
+  setSyncStatus('syncing');
+  try {
+    const res = await fetch(API_BASE + path, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        ...(options.headers || {})
+      }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    setSyncStatus('ok');
+    return data;
+  } catch (e) {
+    setSyncStatus('error');
+    showToast('Server error — check connection');
+    throw e;
   }
-  return { data: null, fromCache: false, error: new Error('Offline') };
+}
+
+function setSyncStatus(state) {
+  const el = document.getElementById('sync-status');
+  if (state === 'syncing') { el.className = 'sync-status syncing'; el.innerHTML = '<div class="spinner" style="width:12px;height:12px;border-width:1.5px"></div> Syncing…'; }
+  else if (state === 'error') { el.className = 'sync-status error'; el.innerHTML = '<i class="ti ti-alert-circle"></i> Offline'; }
+  else { el.className = 'sync-status'; el.innerHTML = '<i class="ti ti-circle-check"></i> Synced'; }
 }
 
 // ─── UTILS ────────────────────────────────────────────────────────────────────
@@ -576,22 +369,14 @@ function uid() { return 'e' + Date.now() + Math.random().toString(36).slice(2, 6
 function fid() { return 'f' + Date.now() + Math.random().toString(36).slice(2, 6) }
 function todayStr() { return new Date().toISOString().slice(0, 10) }
 function fmtDate(d) { const [y, m, day] = d.split('-'); return `${day}/${m}` }
-function calcMacros(e) {
-  const a = parseFloat(e.amount) || 0;
-  return { p: +(e.p * a).toFixed(2), c: +(e.c * a).toFixed(2), f: +(e.fat * a).toFixed(2) };
-}
 
-function setSyncStatus(state) {
-  const el = document.getElementById('sync-status');
-  const map = {
-    syncing: ['sync-status syncing', '<div class="spinner" style="width:12px;height:12px;border-width:1.5px"></div> Syncing…'],
-    error:   ['sync-status error',   '<i class="ti ti-alert-circle"></i> Error'],
-    offline: ['sync-status offline', '<i class="ti ti-wifi-off"></i> Offline'],
-    queued:  ['sync-status queued',  '<i class="ti ti-clock"></i> Pending sync'],
-    ok:      ['sync-status',         '<i class="ti ti-circle-check"></i> Synced'],
+function calcMacros(entry) {
+  const amt = parseFloat(entry.amount) || 0;
+  return {
+    p: +(entry.p * amt).toFixed(2),
+    c: +(entry.c * amt).toFixed(2),
+    f: +(entry.fat * amt).toFixed(2)
   };
-  const [cls, html] = map[state] || map.ok;
-  el.className = cls; el.innerHTML = html;
 }
 
 // ─── NAV ──────────────────────────────────────────────────────────────────────
@@ -603,22 +388,109 @@ function showPage(p) {
   document.querySelectorAll('.nav-btn')[map[p]].classList.add('active');
   if (p === 'history') loadHistory();
   if (p === 'foods') renderFoodsTable();
-  if (p === 'import') showQueue();
 }
 
-// ─── FOODS ───────────────────────────────────────────────────────────────────
-async function loadFoods() {
-  const { data } = await apiFetch('/foods');
-  if (data) {
-    foods = data;
-    await saveSnapshot('foods', foods);
-  } else {
-    // Load from cache
-    const cached = await loadSnapshot('foods');
-    if (cached) { foods = cached; }
+// ─── LOG PAGE ─────────────────────────────────────────────────────────────────
+function getLogDate() { return document.getElementById('log-date').value || todayStr() }
+function shiftDate(d) {
+  const dt = new Date(getLogDate() + 'T12:00:00');
+  dt.setDate(dt.getDate() + d);
+  document.getElementById('log-date').value = dt.toISOString().slice(0, 10);
+  loadDayEntries();
+}
+function setToday() { document.getElementById('log-date').value = todayStr(); loadDayEntries() }
+
+async function loadDayEntries() {
+  const date = getLogDate();
+  try {
+    dayEntries = await apiFetch(`/log/${date}`);
+    renderLog();
+  } catch (e) { /* handled in apiFetch */ }
+}
+
+function renderLog() {
+  const tbody = document.getElementById('log-tbody');
+  let tp = 0, tc = 0, tf = 0;
+  if (!dayEntries.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">No entries for this day</td></tr>`;
+    updateTotals(0, 0, 0); return;
   }
+  tbody.innerHTML = dayEntries.map(e => {
+    const m = calcMacros(e);
+    tp += m.p; tc += m.c; tf += m.f;
+    const amtLabel = e.unit === 'fixed' ? `${e.amount}× ${e.unitName}` : e.amount + 'g';
+    return `<tr>
+      <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.foodName}">${e.foodName}</td>
+      <td style="font-size:12px;color:var(--text-secondary)">${e.meal || '—'}</td>
+      <td class="r" style="font-size:12px">${amtLabel}</td>
+      <td class="r"><span class="pill pill-p">${m.p}g</span></td>
+      <td class="r"><span class="pill pill-c">${m.c}g</span></td>
+      <td class="r"><span class="pill pill-f">${m.f}g</span></td>
+      <td class="act"><button class="btn danger" onclick="deleteEntry('${e.id}')"><i class="ti ti-trash"></i></button></td>
+    </tr>`;
+  }).join('') + `<tr class="tot-row"><td colspan="3" style="font-weight:500">Total</td><td class="r">${tp.toFixed(1)}g</td><td class="r">${tc.toFixed(1)}g</td><td class="r">${tf.toFixed(1)}g</td><td></td></tr>`;
+  updateTotals(tp, tc, tf);
 }
 
+function updateTotals(p, c, f) {
+  document.getElementById('tot-p').textContent = p.toFixed(1) + 'g';
+  document.getElementById('tot-c').textContent = c.toFixed(1) + 'g';
+  document.getElementById('tot-f').textContent = f.toFixed(1) + 'g';
+  document.getElementById('tot-kcal').textContent = Math.round(p * 4 + c * 4 + f * 9) + ' kcal';
+  renderDonut(p, c, f);
+}
+
+function renderDonut(p, c, f) {
+  const ctx = document.getElementById('macro-donut').getContext('2d');
+  if (donutChart) donutChart.destroy();
+  const total = p + c + f;
+  donutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels: ['Protein', 'Carbs', 'Fat'], datasets: [{ data: total ? [p, c, f] : [1, 1, 1], backgroundColor: ['#7F77DD', '#1D9E75', '#D85A30'], borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: d => `${d.label}: ${d.raw}g${total ? ' (' + Math.round(d.raw / total * 100) + '%)' : ''}` } } } }
+  });
+}
+
+async function addEntry() {
+  const date = getLogDate();
+  const amount = parseFloat(document.getElementById('entry-amount').value);
+  const meal = document.getElementById('entry-meal').value.trim();
+  if (!selectedFood) { showToast('Select a food first'); return }
+  if (!amount || amount <= 0) { showToast('Enter a valid amount'); return }
+  try {
+    const entry = await apiFetch('/log', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: uid(), date,
+        foodId: selectedFood.id, foodName: selectedFood.name,
+        p: selectedFood.p, c: selectedFood.c, fat: selectedFood.f,
+        unit: selectedFood.unit, unitName: selectedFood.unitName,
+        amount, meal
+      })
+    });
+    dayEntries.push(entry);
+    renderLog();
+    clearEntryForm();
+    showToast('Entry added');
+  } catch (e) { /* handled */ }
+}
+
+async function deleteEntry(id) {
+  try {
+    await apiFetch(`/log/${id}`, { method: 'DELETE' });
+    dayEntries = dayEntries.filter(e => e.id !== id);
+    renderLog();
+  } catch (e) { /* handled */ }
+}
+
+function clearEntryForm() {
+  document.getElementById('food-search').value = '';
+  document.getElementById('entry-amount').value = '';
+  document.getElementById('entry-meal').value = '';
+  selectedFood = null; calcPreview(); updateAmountLabel(null);
+}
+
+// ─── FOOD SEARCH ─────────────────────────────────────────────────────────────
 function filterFoodSearch() {
   const q = document.getElementById('food-search').value.toLowerCase();
   const box = document.getElementById('food-suggestions');
@@ -657,12 +529,65 @@ function updateAmountLabel(food) {
 
 function calcPreview() {
   const a = parseFloat(document.getElementById('entry-amount').value) || 0;
-  if (!selectedFood || !a) { ['prev-p','prev-c','prev-f'].forEach(id => document.getElementById(id).textContent = '—'); return }
+  if (!selectedFood || !a) {
+    ['prev-p', 'prev-c', 'prev-f'].forEach(id => document.getElementById(id).textContent = '—'); return;
+  }
   document.getElementById('prev-p').textContent = (selectedFood.p * a).toFixed(1) + 'g';
   document.getElementById('prev-c').textContent = (selectedFood.c * a).toFixed(1) + 'g';
   document.getElementById('prev-f').textContent = (selectedFood.f * a).toFixed(1) + 'g';
 }
 
+// ─── HISTORY PAGE ─────────────────────────────────────────────────────────────
+async function loadHistory() {
+  const from = document.getElementById('hist-from').value;
+  const to = document.getElementById('hist-to').value;
+  try {
+    const grouped = await apiFetch(`/log?from=${from}&to=${to}`);
+    const rows = Object.keys(grouped).sort().map(d => {
+      let p = 0, c = 0, f = 0;
+      grouped[d].forEach(e => { const m = calcMacros(e); p += m.p; c += m.c; f += m.f });
+      return { d, p: +p.toFixed(1), c: +c.toFixed(1), f: +f.toFixed(1), kcal: Math.round(p * 4 + c * 4 + f * 9) };
+    });
+    const tbody = document.getElementById('hist-tbody');
+    if (!rows.length) { tbody.innerHTML = `<tr><td colspan="6" class="empty">No entries in this range</td></tr>`; renderHistChart([]); return }
+    tbody.innerHTML = rows.map(r => {
+      const tot = r.p + r.c + r.f || 1;
+      return `<tr>
+        <td>${fmtDate(r.d)}</td>
+        <td class="r"><span class="pill pill-p">${r.p}g</span></td>
+        <td class="r"><span class="pill pill-c">${r.c}g</span></td>
+        <td class="r"><span class="pill pill-f">${r.f}g</span></td>
+        <td class="r">${r.kcal}</td>
+        <td><div class="macro-bar">
+          <div style="width:${Math.round(r.p / tot * 100)}%;background:#7F77DD;min-width:${r.p ? 2 : 0}px"></div>
+          <div style="width:${Math.round(r.c / tot * 100)}%;background:#1D9E75;min-width:${r.c ? 2 : 0}px"></div>
+          <div style="width:${Math.round(r.f / tot * 100)}%;background:#D85A30;min-width:${r.f ? 2 : 0}px"></div>
+        </div></td>
+      </tr>`;
+    }).join('');
+    renderHistChart(rows);
+  } catch (e) { /* handled */ }
+}
+
+function renderHistChart(rows) {
+  const ctx = document.getElementById('hist-chart').getContext('2d');
+  if (histChart) histChart.destroy();
+  if (!rows.length) return;
+  histChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => fmtDate(r.d)),
+      datasets: [
+        { label: 'Protein', data: rows.map(r => r.p), backgroundColor: '#7F77DD', stack: 's' },
+        { label: 'Carbs', data: rows.map(r => r.c), backgroundColor: '#1D9E75', stack: 's' },
+        { label: 'Fat', data: rows.map(r => r.f), backgroundColor: '#D85A30', stack: 's' },
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { stacked: true, ticks: { autoSkip: true, maxTicksLimit: 14 } }, y: { stacked: true, ticks: { callback: v => v + 'g' } } } }
+  });
+}
+
+// ─── FOODS PAGE ───────────────────────────────────────────────────────────────
 function renderFoodsTable() {
   const q = (document.getElementById('food-db-search').value || '').toLowerCase();
   const tbody = document.getElementById('foods-tbody');
@@ -693,22 +618,14 @@ async function saveFood() {
   if (!name) { showToast('Enter a food name'); return }
   if (isNaN(p)) { showToast('Enter protein value'); return }
   const id = editFoodId || fid();
-  const foodObj = { id, name, cat, unit, unitName, p, c, f, state };
-
-  // Optimistic update
-  const idx = foods.findIndex(x => x.id === id);
-  if (idx > -1) foods[idx] = foodObj; else foods.push(foodObj);
-  await saveSnapshot('foods', foods);
-  renderFoodsTable();
-  clearFoodForm();
-
-  if (isOnline) {
-    const { data } = await apiFetch('/foods', { method: 'POST', body: JSON.stringify(foodObj) });
-    if (data) { const i = foods.findIndex(x => x.id === id); if (i > -1) foods[i] = data; }
-  } else {
-    await enqueue(API_BASE + '/foods', 'POST', foodObj);
-    showToast('Food saved — will sync when home');
-  }
+  try {
+    const saved = await apiFetch('/foods', { method: 'POST', body: JSON.stringify({ id, name, cat, unit, unitName, p, c, f, state }) });
+    const idx = foods.findIndex(x => x.id === id);
+    if (idx > -1) foods[idx] = saved; else foods.push(saved);
+    renderFoodsTable();
+    clearFoodForm();
+    showToast('Food saved');
+  } catch (e) { /* handled */ }
 }
 
 function editFood(id) {
@@ -725,25 +642,23 @@ function editFood(id) {
   document.getElementById('fd-cancel-btn').style.display = 'inline-flex';
   document.getElementById('food-form-title').textContent = 'Edit food';
   toggleUnitFields();
+  document.getElementById('fd-name').focus();
   document.getElementById('fd-name').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 async function deleteFood(id) {
-  if (!confirm('Delete this food?')) return;
-  foods = foods.filter(f => f.id !== id);
-  await saveSnapshot('foods', foods);
-  renderFoodsTable();
-  if (isOnline) {
+  if (!confirm('Delete this food from the database?')) return;
+  try {
     await apiFetch(`/foods/${id}`, { method: 'DELETE' });
-  } else {
-    await enqueue(API_BASE + `/foods/${id}`, 'DELETE', null);
-    showToast('Deleted — will sync when home');
-  }
+    foods = foods.filter(f => f.id !== id);
+    renderFoodsTable();
+    showToast('Food deleted');
+  } catch (e) { /* handled */ }
 }
 
 function clearFoodForm() {
   editFoodId = null;
-  ['fd-name','fd-p','fd-c','fd-f','fd-unit-name'].forEach(i => document.getElementById(i).value = '');
+  ['fd-name', 'fd-p', 'fd-c', 'fd-f', 'fd-unit-name'].forEach(i => document.getElementById(i).value = '');
   document.getElementById('fd-cat').value = 'poultry';
   document.getElementById('fd-unit').value = 'g';
   document.getElementById('fd-state').value = 'Cooked';
@@ -760,208 +675,7 @@ function toggleUnitFields() {
   document.getElementById('fd-f-label').textContent = 'Fat (' + lbl + ')';
 }
 
-// ─── LOG ──────────────────────────────────────────────────────────────────────
-function getLogDate() { return document.getElementById('log-date').value || todayStr() }
-function shiftDate(d) {
-  const dt = new Date(getLogDate() + 'T12:00:00'); dt.setDate(dt.getDate() + d);
-  document.getElementById('log-date').value = dt.toISOString().slice(0, 10);
-  loadDayEntries();
-}
-function setToday() { document.getElementById('log-date').value = todayStr(); loadDayEntries() }
-
-async function loadDayEntries() {
-  const date = getLogDate();
-  const snapshotKey = `log-${date}`;
-
-  if (isOnline) {
-    const { data } = await apiFetch(`/log/${date}`);
-    if (data) {
-      dayEntries = data;
-      await saveSnapshot(snapshotKey, dayEntries);
-    }
-  } else {
-    const cached = await loadSnapshot(snapshotKey);
-    dayEntries = cached || [];
-    // Also apply any pending queue entries for this date visually
-    const queue = await dbGetAll(QUEUE_STORE);
-    const pendingAdds = queue.filter(q => q.method === 'POST' && q.url.includes('/log') && q.body?.date === date);
-    pendingAdds.forEach(q => {
-      if (!dayEntries.find(e => e.id === q.body.id)) {
-        dayEntries.push({ ...q.body, _pending: true });
-      }
-    });
-  }
-  renderLog();
-}
-
-function renderLog() {
-  const tbody = document.getElementById('log-tbody');
-  let tp = 0, tc = 0, tf = 0;
-  if (!dayEntries.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty">${isOnline ? 'No entries for this day' : 'No cached entries — add new ones below'}</td></tr>`;
-    updateTotals(0, 0, 0); return;
-  }
-  tbody.innerHTML = dayEntries.map(e => {
-    const m = calcMacros(e);
-    tp += m.p; tc += m.c; tf += m.f;
-    const amtLabel = e.unit === 'fixed' ? `${e.amount}× ${e.unitName}` : e.amount + 'g';
-    const pendingBadge = e._pending ? '<span class="pill-offline">pending</span>' : '';
-    return `<tr>
-      <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.foodName}">${e.foodName}${pendingBadge}</td>
-      <td style="font-size:12px;color:var(--text-secondary)">${e.meal || '—'}</td>
-      <td class="r" style="font-size:12px">${amtLabel}</td>
-      <td class="r"><span class="pill pill-p">${m.p}g</span></td>
-      <td class="r"><span class="pill pill-c">${m.c}g</span></td>
-      <td class="r"><span class="pill pill-f">${m.f}g</span></td>
-      <td class="act"><button class="btn danger" onclick="deleteEntry('${e.id}','${e._pending||false}')"><i class="ti ti-trash"></i></button></td>
-    </tr>`;
-  }).join('') + `<tr class="tot-row"><td colspan="3" style="font-weight:500">Total</td><td class="r">${tp.toFixed(1)}g</td><td class="r">${tc.toFixed(1)}g</td><td class="r">${tf.toFixed(1)}g</td><td></td></tr>`;
-  updateTotals(tp, tc, tf);
-}
-
-function updateTotals(p, c, f) {
-  document.getElementById('tot-p').textContent = p.toFixed(1) + 'g';
-  document.getElementById('tot-c').textContent = c.toFixed(1) + 'g';
-  document.getElementById('tot-f').textContent = f.toFixed(1) + 'g';
-  document.getElementById('tot-kcal').textContent = Math.round(p * 4 + c * 4 + f * 9) + ' kcal';
-  renderDonut(p, c, f);
-}
-
-function renderDonut(p, c, f) {
-  const ctx = document.getElementById('macro-donut').getContext('2d');
-  if (donutChart) donutChart.destroy();
-  const total = p + c + f;
-  donutChart = new Chart(ctx, {
-    type: 'doughnut',
-    data: { labels: ['Protein', 'Carbs', 'Fat'], datasets: [{ data: total ? [p, c, f] : [1, 1, 1], backgroundColor: ['#7F77DD', '#1D9E75', '#D85A30'], borderWidth: 0 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: d => `${d.label}: ${d.raw}g${total ? ' (' + Math.round(d.raw / total * 100) + '%)' : ''}` } } } }
-  });
-}
-
-async function addEntry() {
-  const date = getLogDate();
-  const amount = parseFloat(document.getElementById('entry-amount').value);
-  const meal = document.getElementById('entry-meal').value.trim();
-  if (!selectedFood) { showToast('Select a food first'); return }
-  if (!amount || amount <= 0) { showToast('Enter a valid amount'); return }
-
-  const entry = {
-    id: uid(), date,
-    foodId: selectedFood.id, foodName: selectedFood.name,
-    p: selectedFood.p, c: selectedFood.c, fat: selectedFood.f,
-    unit: selectedFood.unit, unitName: selectedFood.unitName,
-    amount, meal
-  };
-
-  // Optimistic update
-  dayEntries.push({ ...entry, _pending: !isOnline });
-  const snapshotKey = `log-${date}`;
-  await saveSnapshot(snapshotKey, dayEntries.filter(e => !e._pending));
-  renderLog();
-  clearEntryForm();
-
-  if (isOnline) {
-    const { data } = await apiFetch('/log', { method: 'POST', body: JSON.stringify(entry) });
-    if (data) {
-      const i = dayEntries.findIndex(e => e.id === entry.id);
-      if (i > -1) { dayEntries[i] = data; await saveSnapshot(snapshotKey, dayEntries); renderLog(); }
-    }
-    showToast('Entry added');
-  } else {
-    await enqueue(API_BASE + '/log', 'POST', entry);
-    showToast('Saved offline — will sync when home');
-    updateOfflineUI();
-  }
-}
-
-async function deleteEntry(id, isPending) {
-  const date = getLogDate();
-  dayEntries = dayEntries.filter(e => e.id !== id);
-  await saveSnapshot(`log-${date}`, dayEntries.filter(e => !e._pending));
-  renderLog();
-
-  if (isOnline) {
-    await apiFetch(`/log/${id}`, { method: 'DELETE' });
-  } else {
-    if (!isPending) {
-      await enqueue(API_BASE + `/log/${id}`, 'DELETE', null);
-    } else {
-      // Remove from queue if it was never synced
-      const queue = await dbGetAll(QUEUE_STORE);
-      const qItem = queue.find(q => q.body?.id === id);
-      if (qItem) await dbDelete(QUEUE_STORE, qItem.id);
-    }
-    showToast('Deleted — will sync when home');
-    updateOfflineUI();
-  }
-}
-
-function clearEntryForm() {
-  document.getElementById('food-search').value = '';
-  document.getElementById('entry-amount').value = '';
-  document.getElementById('entry-meal').value = '';
-  selectedFood = null; calcPreview(); updateAmountLabel(null);
-}
-
-// ─── HISTORY ─────────────────────────────────────────────────────────────────
-async function loadHistory() {
-  const from = document.getElementById('hist-from').value;
-  const to = document.getElementById('hist-to').value;
-  let grouped = {};
-
-  if (isOnline) {
-    const { data } = await apiFetch(`/log?from=${from}&to=${to}`);
-    if (data) { grouped = data; await saveSnapshot(`history-${from}-${to}`, grouped); }
-  } else {
-    const cached = await loadSnapshot(`history-${from}-${to}`);
-    grouped = cached || {};
-  }
-
-  const rows = Object.keys(grouped).sort().map(d => {
-    let p = 0, c = 0, f = 0;
-    grouped[d].forEach(e => { const m = calcMacros(e); p += m.p; c += m.c; f += m.f });
-    return { d, p: +p.toFixed(1), c: +c.toFixed(1), f: +f.toFixed(1), kcal: Math.round(p * 4 + c * 4 + f * 9) };
-  });
-
-  const tbody = document.getElementById('hist-tbody');
-  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="6" class="empty">No entries in this range</td></tr>`; renderHistChart([]); return }
-  tbody.innerHTML = rows.map(r => {
-    const tot = r.p + r.c + r.f || 1;
-    return `<tr>
-      <td>${fmtDate(r.d)}</td>
-      <td class="r"><span class="pill pill-p">${r.p}g</span></td>
-      <td class="r"><span class="pill pill-c">${r.c}g</span></td>
-      <td class="r"><span class="pill pill-f">${r.f}g</span></td>
-      <td class="r">${r.kcal}</td>
-      <td><div class="macro-bar">
-        <div style="width:${Math.round(r.p/tot*100)}%;background:#7F77DD;min-width:${r.p?2:0}px"></div>
-        <div style="width:${Math.round(r.c/tot*100)}%;background:#1D9E75;min-width:${r.c?2:0}px"></div>
-        <div style="width:${Math.round(r.f/tot*100)}%;background:#D85A30;min-width:${r.f?2:0}px"></div>
-      </div></td>
-    </tr>`;
-  }).join('');
-  renderHistChart(rows);
-}
-
-function renderHistChart(rows) {
-  const ctx = document.getElementById('hist-chart').getContext('2d');
-  if (histChart) histChart.destroy();
-  if (!rows.length) return;
-  histChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: rows.map(r => fmtDate(r.d)),
-      datasets: [
-        { label: 'Protein', data: rows.map(r => r.p), backgroundColor: '#7F77DD', stack: 's' },
-        { label: 'Carbs', data: rows.map(r => r.c), backgroundColor: '#1D9E75', stack: 's' },
-        { label: 'Fat', data: rows.map(r => r.f), backgroundColor: '#D85A30', stack: 's' },
-      ]
-    },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { stacked: true, ticks: { autoSkip: true, maxTicksLimit: 14 } }, y: { stacked: true, ticks: { callback: v => v + 'g' } } } }
-  });
-}
-
-// ─── IMPORT / EXPORT ─────────────────────────────────────────────────────────
+// ─── IMPORT / EXPORT ──────────────────────────────────────────────────────────
 function handleCSV(input) {
   const file = input.files[0]; if (!file) return;
   const reader = new FileReader();
@@ -969,9 +683,10 @@ function handleCSV(input) {
     const lines = e.target.result.trim().split('\n').map(l => l.split(/[,\t]/));
     const h = lines[0].map(x => x.trim().toLowerCase().replace(/"/g, ''));
     const di = h.indexOf('date'), fi = h.indexOf('food'), ai = h.indexOf('amount');
-    const pi = h.indexOf('protein'), ci = h.indexOf('carbs'), fli = h.indexOf('fat'), mi = h.indexOf('meal'), ui = h.indexOf('unit');
+    const pi = h.indexOf('protein'), ci = h.indexOf('carbs'), fli = h.indexOf('fat'), mi = h.indexOf('meal');
     if (di < 0 || fi < 0 || ai < 0) {
-      document.getElementById('import-preview').innerHTML = `<p style="color:var(--text-danger);font-size:13px;margin-top:8px">Missing columns: date, food, amount</p>`; return;
+      document.getElementById('import-preview').innerHTML = `<p style="color:var(--text-danger);font-size:13px;margin-top:8px"><i class="ti ti-alert-circle"></i> Missing columns: date, food, amount</p>`;
+      return;
     }
     let imported = 0, skipped = 0;
     for (const row of lines.slice(1)) {
@@ -981,103 +696,52 @@ function handleCSV(input) {
       const p = parseFloat(row[pi]) || 0, c = parseFloat(row[ci]) || 0, f = parseFloat(row[fli]) || 0;
       const meal = mi >= 0 ? (row[mi] || '').trim().replace(/"/g, '') : '';
       if (!date || !fname || !amount) { skipped++; continue }
-      const entry = { id: uid(), date, foodId: 'imported', foodName: fname, p: p/amount, c: c/amount, fat: f/amount,
-        unit: ui >= 0 && row[ui] && row[ui].trim().replace(/"/g,'') !== '1g' ? 'fixed' : 'g',
-        unitName: ui >= 0 && row[ui] ? row[ui].trim().replace(/"/g,'') : '1g',
-        amount, meal };
-      if (isOnline) {
-        try { await apiFetch('/log', { method: 'POST', body: JSON.stringify(entry) }); imported++; }
-        catch { skipped++ }
-      } else {
-        await enqueue(API_BASE + '/log', 'POST', entry); imported++;
-      }
+      try {
+        await apiFetch('/log', {
+          method: 'POST',
+          body: JSON.stringify({
+            id: uid(), date, foodId: 'imported', foodName: fname,
+            p: amount > 0 ? p / amount : p, c: amount > 0 ? c / amount : c, fat: amount > 0 ? f / amount : f,
+            unit: 'g', unitName: '1g', amount, meal
+          })
+        });
+        imported++;
+      } catch (e) { skipped++ }
     }
-    document.getElementById('import-preview').innerHTML = `<p style="font-size:13px;color:var(--text-success);margin-top:8px"><i class="ti ti-check"></i> Imported ${imported}${skipped ? ' (' + skipped + ' skipped)' : ''}${!isOnline ? ' — will sync when home' : ''}</p>`;
+    document.getElementById('import-preview').innerHTML = `<p style="font-size:13px;color:var(--text-success);margin-top:8px"><i class="ti ti-check"></i> Imported ${imported} entries${skipped ? ' (' + skipped + ' skipped)' : ''}</p>`;
     showToast(`Imported ${imported} entries`);
-    updateOfflineUI();
   };
   reader.readAsText(file);
 }
 
 async function exportCSV() {
-  if (!isOnline) { showToast('Export requires connection to Pi'); return }
-  const { data: grouped } = await apiFetch('/log');
-  if (!grouped) return;
-  const header = 'date,food,meal,amount,unit,protein,carbs,fat';
-  const rows = [];
-  Object.keys(grouped).sort().forEach(date => {
-    grouped[date].forEach(e => {
-      const m = calcMacros(e);
-      rows.push([date, `"${e.foodName}"`, `"${e.meal||''}"`, e.amount, e.unitName||'g', m.p, m.c, m.f].join(','));
+  try {
+    const grouped = await apiFetch('/log');
+    const header = 'date,food,meal,amount,unit,protein,carbs,fat';
+    const rows = [];
+    Object.keys(grouped).sort().forEach(date => {
+      grouped[date].forEach(e => {
+        const m = calcMacros(e);
+        rows.push([date, `"${e.foodName}"`, `"${e.meal || ''}"`, e.amount, e.unitName || 'g', m.p, m.c, m.f].join(','));
+      });
     });
-  });
-  if (!rows.length) { showToast('No data to export'); return }
-  const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'macro_log.csv'; a.click();
+    if (!rows.length) { showToast('No data to export'); return }
+    const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'macro_log.csv';
+    a.click();
+  } catch (e) { /* handled */ }
 }
 
-// ─── TOAST ───────────────────────────────────────────────────────────────────
+// ─── TOAST ────────────────────────────────────────────────────────────────────
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+  setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-// ─── PWA INSTALL ─────────────────────────────────────────────────────────────
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredInstallPrompt = e;
-  document.getElementById('install-banner').classList.add('show');
-});
-
-function installPWA() {
-  if (!deferredInstallPrompt) return;
-  deferredInstallPrompt.prompt();
-  deferredInstallPrompt.userChoice.then(() => {
-    deferredInstallPrompt = null;
-    document.getElementById('install-banner').classList.remove('show');
-  });
-}
-
-function dismissInstall() {
-  document.getElementById('install-banner').classList.remove('show');
-}
-
-window.addEventListener('appinstalled', () => {
-  document.getElementById('install-banner').classList.remove('show');
-  showToast('App installed! Works offline now.');
-});
-
-// ─── SERVICE WORKER ──────────────────────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').then(reg => {
-    console.log('SW registered');
-  });
-  navigator.serviceWorker.addEventListener('message', e => {
-    if (e.data?.type === 'SYNC_COMPLETE') {
-      showToast('Background sync complete');
-      loadDayEntries();
-      updateOfflineUI();
-    }
-  });
-}
-
-// ─── CONNECTIVITY EVENTS ─────────────────────────────────────────────────────
-window.addEventListener('online', async () => {
-  const serverUp = await checkConnectivity();
-  if (serverUp) onCameOnline();
-});
-window.addEventListener('offline', onWentOffline);
-
-// Poll for Pi connectivity every 30s (catches coming home on WiFi)
-setInterval(async () => {
-  if (!isOnline) {
-    const serverUp = await checkConnectivity();
-    if (serverUp) onCameOnline();
-  }
-}, 30000);
-
-// ─── INIT ────────────────────────────────────────────────────────────────────
+// ─── INIT ─────────────────────────────────────────────────────────────────────
 async function init() {
   document.getElementById('log-date').value = todayStr();
   const hd = new Date(); hd.setDate(hd.getDate() - 13);
@@ -1085,14 +749,19 @@ async function init() {
   document.getElementById('hist-to').value = todayStr();
   toggleUnitFields();
 
-  offlineDB = await openOfflineDB();
-  isOnline = await checkConnectivity();
-  updateOfflineUI();
-
-  await loadFoods();
-  await loadDayEntries();
-
-  document.getElementById('loading-overlay').style.display = 'none';
+  try {
+    foods = await apiFetch('/foods');
+    await loadDayEntries();
+    document.getElementById('loading-overlay').style.display = 'none';
+  } catch (e) {
+    document.getElementById('loading-overlay').innerHTML = `
+      <div style="text-align:center">
+        <i class="ti ti-server-off" style="font-size:40px;color:var(--text-tertiary);display:block;margin-bottom:12px"></i>
+        <p style="font-size:14px;color:var(--text-secondary)">Cannot reach the server.</p>
+        <p style="font-size:13px;color:var(--text-tertiary);margin-top:4px">Check your API_KEY and that the backend is running.</p>
+        <button class="btn" style="margin-top:16px" onclick="init()">Retry</button>
+      </div>`;
+  }
 }
 
 init();
