@@ -105,6 +105,37 @@ app.delete('/api/foods/:id', async (req, res) => {
   }
 });
 
+// Replace entire foods table with imported rows
+app.post('/api/foods/import', async (req, res) => {
+  const { foods } = req.body;
+  if (!Array.isArray(foods)) {
+    return res.status(400).json({ error: 'foods must be an array' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('TRUNCATE foods');
+    for (const food of foods) {
+      const { name, cat, unit, unitName, p, c, f, state } = food;
+      if (!name) continue;
+      const id = 'f_' + Math.random().toString(36).slice(2, 10);
+      await client.query(
+        `INSERT INTO foods (id, name, cat, unit, unit_name, protein, carbs, fat, state)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [id, name, cat || 'other', unit || 'g', unitName || '1g', p || 0, c || 0, f || 0, state || 'Cooked']
+      );
+    }
+    await client.query('COMMIT');
+    const { rows } = await pool.query('SELECT * FROM foods ORDER BY name ASC');
+    res.json({ imported: rows.length, foods: rows.map(dbFoodToApi) });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
+});
+
 // ─── LOG ENTRIES ───────────────────────────────────────────────────────────────
 app.get('/api/log', async (req, res) => {
   const { from, to } = req.query;

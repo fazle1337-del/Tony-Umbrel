@@ -353,6 +353,19 @@
     <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">Download your full log as CSV for LibreOffice.</p>
     <button class="btn" onclick="exportCSV()"><i class="ti ti-download"></i> Download CSV</button>
   </div>
+  <div class="card">
+    <div class="section-title">Food database</div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+      CSV with columns: <code>name</code> <code>cat</code> <code>unit</code> <code>unit_name</code> <code>protein</code> <code>carbs</code> <code>fat</code> <code>state</code>.
+    </p>
+    <button class="btn" onclick="exportFoodsCSV()" style="margin-bottom:14px"><i class="ti ti-download"></i> Download foods CSV</button>
+    <div class="upload-zone" onclick="document.getElementById('foods-csv-input').click()">
+      <i class="ti ti-file-upload"></i>
+      <p>Click to upload foods CSV (replaces entire food database)</p>
+      <input type="file" id="foods-csv-input" accept=".csv,.tsv" style="display:none" onchange="handleFoodsCSV(this)">
+    </div>
+    <div id="foods-import-preview"></div>
+  </div>
 </div>
 
 </div>
@@ -1014,6 +1027,56 @@ async function exportCSV() {
   if (!rows.length) { showToast('No data to export'); return }
   const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'macro_log.csv'; a.click();
+}
+
+async function exportFoodsCSV() {
+  if (!isOnline) { showToast('Export requires connection to Pi'); return }
+  const { data: foods } = await apiFetch('/foods');
+  if (!foods || !foods.length) { showToast('No foods to export'); return }
+  const header = 'name,cat,unit,unit_name,protein,carbs,fat,state';
+  const rows = foods.map(f => [
+    `"${f.name}"`, `"${f.cat}"`, f.unit, `"${f.unitName}"`, f.p, f.c, f.f, `"${f.state}"`
+  ].join(','));
+  const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'foods_export.csv'; a.click();
+}
+
+function handleFoodsCSV(input) {
+  const file = input.files[0]; if (!file) return;
+  if (!isOnline) { showToast('Import requires connection to Pi'); return }
+  if (!confirm('This will REPLACE your entire food database. Continue?')) { input.value = ''; return }
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const lines = e.target.result.trim().split('\n').map(l => l.split(/[,\t]/));
+    const h = lines[0].map(x => x.trim().toLowerCase().replace(/"/g, ''));
+    const ni = h.indexOf('name'), cati = h.indexOf('cat'), ui2 = h.indexOf('unit'), uni = h.indexOf('unit_name');
+    const pi2 = h.indexOf('protein'), ci2 = h.indexOf('carbs'), fi2 = h.indexOf('fat'), si = h.indexOf('state');
+    if (ni < 0) {
+      document.getElementById('foods-import-preview').innerHTML = `<p style="color:var(--text-danger);font-size:13px;margin-top:8px">Missing column: name</p>`; return;
+    }
+    const clean = v => (v || '').trim().replace(/"/g, '');
+    const foods = lines.slice(1).map(row => ({
+      name: clean(row[ni]),
+      cat: cati >= 0 ? clean(row[cati]) : 'other',
+      unit: ui2 >= 0 ? clean(row[ui2]) : 'g',
+      unitName: uni >= 0 ? clean(row[uni]) : '1g',
+      p: parseFloat(row[pi2]) || 0,
+      c: parseFloat(row[ci2]) || 0,
+      f: parseFloat(row[fi2]) || 0,
+      state: si >= 0 ? clean(row[si]) : 'Cooked'
+    })).filter(f => f.name);
+    const result = await apiFetch('/foods/import', { method: 'POST', body: JSON.stringify({ foods }) });
+    if (result.error) {
+      document.getElementById('foods-import-preview').innerHTML = `<p style="color:var(--text-danger);font-size:13px;margin-top:8px">Import failed: ${result.error.message || result.error}</p>`;
+      showToast('Foods import failed');
+    } else {
+      document.getElementById('foods-import-preview').innerHTML = `<p style="font-size:13px;color:var(--text-success);margin-top:8px"><i class="ti ti-check"></i> Imported ${result.data.imported} foods</p>`;
+      showToast(`Imported ${result.data.imported} foods`);
+      await loadFoods();
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
 }
 
 // ─── TOAST ───────────────────────────────────────────────────────────────────
