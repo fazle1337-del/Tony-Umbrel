@@ -366,6 +366,12 @@
     </div>
     <div id="foods-import-preview"></div>
   </div>
+  <div class="card">
+    <div class="section-title">Backup to Gitea</div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">Push a CSV snapshot of your log and food database to the <code>macro-tracker-backups</code> Gitea repo.</p>
+    <button class="btn" onclick="backupNow()" id="backup-btn"><i class="ti ti-cloud-upload"></i> Backup now</button>
+    <div id="backup-status"></div>
+  </div>
 </div>
 
 </div>
@@ -1077,6 +1083,24 @@ function handleFoodsCSV(input) {
     input.value = '';
   };
   reader.readAsText(file);
+}
+
+async function backupNow() {
+  if (!isOnline) { showToast('Backup requires connection to Pi'); return }
+  const btn = document.getElementById('backup-btn');
+  const status = document.getElementById('backup-status');
+  btn.disabled = true;
+  status.innerHTML = `<p style="font-size:13px;color:var(--text-secondary);margin-top:8px">Backing up…</p>`;
+  const result = await apiFetch('/backup', { method: 'POST' });
+  btn.disabled = false;
+  if (result.error) {
+    status.innerHTML = `<p style="color:var(--text-danger);font-size:13px;margin-top:8px">Backup failed: ${result.error.message || result.error}</p>`;
+    showToast('Backup failed');
+  } else {
+    const d = result.data;
+    status.innerHTML = `<p style="font-size:13px;color:var(--text-success);margin-top:8px"><i class="ti ti-check"></i> Backed up ${d.log.entries} log entries and ${d.foods.entries} foods to ${d.date}</p>`;
+    showToast('Backup complete');
+  }
 }
 
 // ─── TOAST ───────────────────────────────────────────────────────────────────

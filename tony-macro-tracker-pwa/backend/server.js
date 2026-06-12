@@ -5,6 +5,12 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = 3001;
 
+// ─── GITEA BACKUP CONFIG ─────────────────────────────────────────────────────
+const GITEA_URL = process.env.GITEA_URL || '';
+const GITEA_TOKEN = process.env.GITEA_TOKEN || '';
+const GITEA_OWNER = process.env.GITEA_OWNER || '';
+const GITEA_REPO = process.env.GITEA_REPO || 'macro-tracker-backups';
+
 // ─── DB ────────────────────────────────────────────────────────────────────────
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -200,6 +206,80 @@ app.delete('/api/log/:id', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ─── BACKUP ─────────────────────────────────────────────────────────────────────
+app.post('/api/backup', async (req, res) => {
+  if (!GITEA_URL || !GITEA_TOKEN || !GITEA_OWNER) {
+    return res.status(500).json({ error: 'Gitea backup not configured (GITEA_URL/GITEA_TOKEN/GITEA_OWNER missing)' });
+  }
+  try {
+    const date = new Date().toISOString().slice(0, 10);
+
+    // Build log CSV
+    const { rows: logRows } = await pool.query(
+      'SELECT * FROM log_entries ORDER BY entry_date ASC, created_at ASC'
+    );
+    const logHeader = 'date,food,meal,amount,unit,protein,carbs,fat';
+    const logLines = logRows.map(r => {
+      const e = dbEntryToApi(r);
+      const totalP = (e.p * e.amount).toFixed(2);
+      const totalC = (e.c * e.amount).toFixed(2);
+      const totalF = (e.fat * e.amount).toFixed(2);
+      return [e.date, `"${e.foodName}"`, `"${e.meal || ''}"`, e.amount, e.unitName || 'g', totalP, totalC, totalF].join(',');
+    });
+    const logCsv = [logHeader, ...logLines].join('\n');
+
+    // Build foods CSV
+    const { rows: foodRows } = await pool.query('SELECT * FROM foods ORDER BY name ASC');
+    const foodsHeader = 'name,cat,unit,unit_name,protein,carbs,fat,state';
+    const foodLines = foodRows.map(r => {
+      const f = dbFoodToApi(r);
+      return [`"${f.name}"`, `"${f.cat}"`, f.unit, `"${f.unitName}"`, f.p, f.c, f.f, `"${f.state}"`].join(',');
+    });
+    const foodsCsv = [foodsHeader, ...foodLines].join('\n');
+
+    const logResult = await pushToGitea(`backups/${date}/macro_log.csv`, logCsv, `Backup ${date}: log entries`);
+    const foodsResult = await pushToGitea(`backups/${date}/foods.csv`, foodsCsv, `Backup ${date}: foods`);
+
+    res.json({
+      ok: true,
+      date,
+      log: { entries: logRows.length, ...logResult },
+      foods: { entries: foodRows.length, ...foodsResult }
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Create or update a file in the Gitea repo via Contents API
+async function pushToGitea(filepath, content, message) {
+  const base = `${GITEA_URL}/api/v1/repos/${GITEA_OWNER}/${GITEA_REPO}/contents/${filepath}`;
+  const headers = {
+    'Authorization': `token ${GITEA_TOKEN}`,
+    'Content-Type': 'application/json'
+  };
+  const contentB64 = Buffer.from(content, 'utf-8').toString('base64');
+
+  // Check if file already exists to get its sha (required for updates)
+  let sha = null;
+  const getRes = await fetch(base, { headers });
+  if (getRes.ok) {
+    const existing = await getRes.json();
+    sha = existing.sha;
+  }
+
+  const body = { message, content: contentB64, branch: 'main' };
+  if (sha) body.sha = sha;
+
+  const method = sha ? 'PUT' : 'POST';
+  const putRes = await fetch(base, { method, headers, body: JSON.stringify(body) });
+  if (!putRes.ok) {
+    const errText = await putRes.text();
+    throw new Error(`Gitea push failed for ${filepath}: ${putRes.status} ${errText}`);
+  }
+  return { path: filepath, updated: !!sha };
+}
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────────
 function dbFoodToApi(r) {
