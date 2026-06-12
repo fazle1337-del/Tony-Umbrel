@@ -986,8 +986,8 @@ function handleCSV(input) {
         unitName: ui >= 0 && row[ui] ? row[ui].trim().replace(/"/g,'') : '1g',
         amount, meal };
       if (isOnline) {
-        try { await apiFetch('/log', { method: 'POST', body: JSON.stringify(entry) }); imported++; }
-        catch { skipped++ }
+        const result = await apiFetch('/log', { method: 'POST', body: JSON.stringify(entry) });
+        if (result.error) { skipped++; } else { imported++; }
       } else {
         await enqueue(API_BASE + '/log', 'POST', entry); imported++;
       }
