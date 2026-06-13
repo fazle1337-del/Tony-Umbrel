@@ -8,10 +8,9 @@ services:
 
   api:
     # Umbrel pulls pre-built images; it does NOT build from source.
-    # Push your backend image to your Gitea container registry
-    # (or Docker Hub / GHCR) and pin it here, ideally by sha256 digest:
-    #   image: git.example.com/tony/pen-test-tracker-backend:0.1.0@sha256:<digest>
-    image: git.example.com/tony/pen-test-tracker-backend:0.1.0
+    # Image published to Docker Hub, pinned by multi-arch index digest so the
+    # Pi5 (arm64) and Azure (amd64) both resolve the exact tested build.
+    image: docker.io/tonybooom/pen-test-tracker-backend:0.1.0@sha256:a7a2a12f2016f9e9a4799de3bd04bc82c59c8dd8b60abe7a516bd442d48d9616
     restart: on-failure
     stop_grace_period: 1m
     environment:
