@@ -1,0 +1,33 @@
+manifestVersion: 1
+id: tony-pen-test-tracker
+name: Pen Test Tracker
+tagline: Track pentest findings through remediation with RBAC
+icon: https://cdn-icons-png.flaticon.com/512/2913/2913133.png
+category: files & productivity
+version: "0.1.0"
+port: 8000
+description: >-
+  Ingest penetration test reports and track findings through remediation.
+  InfoSec acts as admin — logging tests, recording findings with gross and
+  net risk ratings, and assigning remediation owners. Other teams see only
+  the findings they own and update status, notes, and evidence.
+
+
+  This release (Phase 1 backend) includes role-based access control, tests
+  with attached reports, findings with the full field set (gross/net risk,
+  likelihood, impact, SLA status, resolver references), owner reassignment
+  with history, and file attachments. Local accounts now; Microsoft Entra ID
+  SSO is planned. The interactive API and docs are served at /docs until the
+  dedicated web UI lands.
+developer: Tony
+website: ""
+submitter: Tony
+submission: ""
+repo: ""
+support: ""
+gallery: []
+releaseNotes: "Phase 1 backend: RBAC, tests, findings, attachments, SLA tracking."
+dependencies: []
+path: "/docs"
+defaultUsername: "admin@example.com"
+defaultPassword: ""

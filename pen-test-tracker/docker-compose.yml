@@ -1,34 +1,42 @@
+version: "3.7"
+
 services:
-  db:
-    image: postgres:16-alpine
+  app_proxy:
     environment:
-      POSTGRES_USER: pentrack
-      POSTGRES_PASSWORD: pentrack
-      POSTGRES_DB: pentrack
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pentrack"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      APP_HOST: tony-pen-test-tracker_api_1
+      APP_PORT: 8000
 
   api:
-    build: ./backend
+    # Umbrel pulls pre-built images; it does NOT build from source.
+    # Push your backend image to your Gitea container registry
+    # (or Docker Hub / GHCR) and pin it here, ideally by sha256 digest:
+    #   image: git.example.com/tony/pen-test-tracker-backend:0.1.0@sha256:<digest>
+    image: git.example.com/tony/pen-test-tracker-backend:0.1.0
+    restart: on-failure
+    stop_grace_period: 1m
     environment:
-      DATABASE_URL: postgresql+psycopg://pentrack:pentrack@db:5432/pentrack
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
-      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@example.com}
-      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-changeme}
+      DATABASE_URL: postgresql+psycopg://pentrack:${APP_SEED}@tony-pen-test-tracker_db_1:5432/pentrack
+      # JWT secret derived from Umbrel's per-app seed so tokens stay valid
+      # across restarts without storing a secret on disk.
+      JWT_SECRET: ${APP_SEED}
+      # First-boot InfoSec admin. Password is Umbrel's per-app password
+      # (visible in the app's info screen). Change it after first login.
+      SEED_ADMIN_EMAIL: admin@example.com
+      SEED_ADMIN_PASSWORD: ${APP_PASSWORD}
+      SEED_ADMIN_NAME: InfoSec Admin
       ATTACHMENTS_DIR: /data/attachments
     volumes:
-      - attachments:/data/attachments
-    ports:
-      - "8000:8000"
+      - ${APP_DATA_DIR}/data/attachments:/data/attachments
     depends_on:
-      db:
-        condition: service_healthy
+      - db
 
-volumes:
-  pgdata:
-  attachments:
+  db:
+    image: postgres:16-alpine
+    restart: on-failure
+    stop_grace_period: 1m
+    environment:
+      POSTGRES_USER: pentrack
+      POSTGRES_PASSWORD: ${APP_SEED}
+      POSTGRES_DB: pentrack
+    volumes:
+      - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data

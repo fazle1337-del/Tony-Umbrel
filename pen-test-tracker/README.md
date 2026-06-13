@@ -1,73 +1,63 @@
-# PenTrack — Backend (Phase 1)
+# Pen Test Tracker — Umbrel app
 
-Findings & remediation tracker. Phase 1 = core API vertical slice.
+App folder for your existing **`tony`** Umbrel Community App Store. Drop the
+`tony-pen-test-tracker/` folder into the same repo as your other apps
+(`tony-macro-tracker-pwa`, etc.) — your store's `umbrel-app-store.yml`
+(`id: tony`) already covers it, so no store manifest is included here.
 
-## Run (Docker — Pi5 / Azure-portable)
+## Files
 
-```bash
-# from repo root
-JWT_SECRET=$(openssl rand -hex 32) \
-SEED_ADMIN_EMAIL=admin@yourco.com \
-SEED_ADMIN_PASSWORD='a-strong-password' \
-docker compose up --build
+```
+tony-pen-test-tracker/
+  umbrel-app.yml         # listing shown in umbrelOS
+  docker-compose.yml     # api + postgres, behind Umbrel's app_proxy
 ```
 
-API: http://localhost:8000  ·  Interactive docs: http://localhost:8000/docs
+## One required step: publish the backend image
 
-On first boot, a single InfoSec **admin** user is seeded from the env vars
-above (only if the users table is empty).
-
-## Run (local, no Docker)
+Umbrel installs from pre-built images, not source. Build and push the backend
+image to your Gitea registry first. The workflow in the main Pen Test Tracker
+repo (`.gitea/workflows/build-backend.yml`) does this on a tag push:
 
 ```bash
-cd backend
-pip install -r requirements.txt
-export DATABASE_URL="sqlite:///./pentrack.db"   # or a Postgres URL
-export ATTACHMENTS_DIR="./attachments"
-uvicorn app.main:app --reload
+git tag v0.1.0
+git push origin v0.1.0
 ```
 
-## Auth
+It builds multi-arch (arm64 for the Pi5, amd64 for Azure). Then set the matching
+reference in `tony-pen-test-tracker/docker-compose.yml`, ideally by digest:
 
-- `POST /auth/login` (form: `username`=email, `password`) → JWT bearer token.
-- Send `Authorization: Bearer <token>` on all other requests.
-- Local accounts now; Microsoft Entra ID SSO arrives in Phase 5.
+```yaml
+image: git.yourhost.com/tony/pen-test-tracker-backend:0.1.0@sha256:<digest>
+```
 
-## RBAC summary
+If your registry needs auth to pull, run `docker login git.yourhost.com` on the
+Pi5 once.
 
-- **admin (InfoSec):** full access — tests, findings, risk fields, owner
-  reassignment, users/teams, all attachments.
-- **member:** sees only findings owned by them or their team; may update
-  status/notes and upload attachments on those findings; cannot edit risk
-  fields or reassign; cannot create tests/findings.
+## Placeholders to edit
 
-## Endpoints
+- `git.example.com/tony/...` in the compose file → your Gitea host.
+- `icon` in `umbrel-app.yml` is a generic Flaticon shield; swap for your own.
+- Fill `website`/`repo`/`support`/`submission` if you want them populated.
 
-- `auth`: `POST /auth/login`
-- `teams`: `GET /teams`, `POST /teams` (admin)
-- `users`: `GET /users` (admin), `POST /users` (admin)
-- `tests`: `GET /tests`, `GET /tests/{id}`, `POST/PATCH/DELETE` (admin)
-- `findings`: `GET /findings[?test_id=]`, `GET /findings/{id}`,
-  `POST` (admin), `PATCH` (owner/admin, field-gated), `DELETE` (admin)
-- attachments:
-  - `POST /tests/{id}/attachments` (admin), `GET` list, download via
-    `/test-attachments/{id}/download`
-  - `POST /findings/{id}/attachments` (owner/admin), `GET` list, download via
-    `/finding-attachments/{id}/download`
+## First launch
 
-## Notes
+- Seeds one **InfoSec admin** on first boot.
+- Username: `admin@example.com` (hardcoded in the compose file for now —
+  Umbrel doesn't reliably pass custom env vars yet; change it there directly).
+- Password: Umbrel's per-app password (`${APP_PASSWORD}`), on the app info
+  screen. Change it after first login.
+- `JWT_SECRET` and the Postgres password derive from `${APP_SEED}` — stable
+  across restarts, nothing committed to the repo.
 
-- `sla_status` is computed, not stored: "Out" when a finding is unresolved and
-  past `due_date`, else "In".
-- File storage is abstracted (`services/storage.py`) — local volume now,
-  swappable for Azure Blob in Phase 6.
-- Tables are auto-created on startup for Phase 1. Alembic migrations are wired
-  in alongside CSV import (Phase 2).
+## Data persistence
 
-## Next phases
+- Postgres: `${APP_DATA_DIR}/data/postgres`
+- Attachments: `${APP_DATA_DIR}/data/attachments`
 
-2. CSV import (flexible column mapping per vendor) + Alembic
-3. BAU planning view
-4. Filterable dashboard
-5. Entra ID SSO
-6. Azure Blob storage + deployment manifests
+Survives stop/start and updates; cleared on uninstall (Umbrel's model).
+
+## Note
+
+`path: /docs` opens the FastAPI interactive docs — the usable interface until
+the React frontend lands. Update `port`/`path` then.
