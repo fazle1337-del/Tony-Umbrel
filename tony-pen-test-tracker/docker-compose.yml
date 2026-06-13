@@ -9,7 +9,7 @@ services:
   web:
     # Frontend: nginx serving the React bundle, reverse-proxying /api -> api:8000.
     # Multi-arch image on Docker Hub; pin by digest after building (see README).
-    image: docker.io/tonybooom/pen-test-tracker-frontend:0.1.0
+    image: docker.io/tonybooom/pen-test-tracker-frontend:0.2.0
     restart: on-failure
     stop_grace_period: 1m
     depends_on:
