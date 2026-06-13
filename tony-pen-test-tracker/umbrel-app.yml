@@ -4,7 +4,7 @@ name: Pen Test Tracker
 tagline: Track pentest findings through remediation with RBAC
 icon: https://cdn-icons-png.flaticon.com/512/2913/2913133.png
 category: files & productivity
-version: "0.2.0"
+version: "0.3.0"
 port: 8080
 description: >-
   Ingest penetration test reports and track findings through remediation.
@@ -26,7 +26,7 @@ submission: ""
 repo: ""
 support: ""
 gallery: []
-releaseNotes: "Adds web UI (Findings, Tests, BAU Schedule, Scopes) in front of the API."
+releaseNotes: "Adds CSV import (map columns, lenient validation, issue report)."
 dependencies: []
 path: ""
 defaultUsername: "admin@example.com"
