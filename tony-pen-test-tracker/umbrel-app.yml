@@ -4,8 +4,8 @@ name: Pen Test Tracker
 tagline: Track pentest findings through remediation with RBAC
 icon: https://cdn-icons-png.flaticon.com/512/2913/2913133.png
 category: files & productivity
-version: "0.1.0"
-port: 8000
+version: "0.2.0"
+port: 8080
 description: >-
   Ingest penetration test reports and track findings through remediation.
   InfoSec acts as admin — logging tests, recording findings with gross and
@@ -26,8 +26,8 @@ submission: ""
 repo: ""
 support: ""
 gallery: []
-releaseNotes: "Phase 1 backend: RBAC, tests, findings, attachments, SLA tracking."
+releaseNotes: "Adds web UI (Findings, Tests, BAU Schedule, Scopes) in front of the API."
 dependencies: []
-path: "/docs"
+path: ""
 defaultUsername: "admin@example.com"
 defaultPassword: ""
