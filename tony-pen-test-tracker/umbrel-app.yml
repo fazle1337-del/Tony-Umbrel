@@ -4,7 +4,7 @@ name: Pen Test Tracker
 tagline: Track pentest findings through remediation with RBAC
 icon: https://cdn-icons-png.flaticon.com/512/2913/2913133.png
 category: files & productivity
-version: "0.3.2"
+version: "0.3.3"
 port: 8080
 description: >-
   Ingest penetration test reports and track findings through remediation.
@@ -26,7 +26,7 @@ submission: ""
 repo: ""
 support: ""
 gallery: []
-releaseNotes: "Adds Penetration Tester and Unique Test Reference fields (shown on Findings), plus CSV export of filtered findings."
+releaseNotes: "Editable test details (incl. tester + reference) on the Tests tab; adds editable Vendor Recommendation, Additional Information, Date Logged in Resolver, and Asset to findings."
 dependencies: []
 path: ""
 defaultUsername: "admin@example.com"
