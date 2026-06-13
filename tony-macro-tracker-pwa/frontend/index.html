@@ -705,6 +705,14 @@ async function saveFood() {
   const cat = document.getElementById('fd-cat').value;
   const unit = document.getElementById('fd-unit').value;
   const unitName = document.getElementById('fd-unit-name').value.trim() || (unit === 'g' ? '1g' : 'Unit');
+  if (unit === 'g' && unitName !== '1g') {
+    showToast('Per-gram foods use the "1g" label — switch to Fixed unit for "' + unitName + '"');
+    return;
+  }
+  if (unit === 'fixed' && (!document.getElementById('fd-unit-name').value.trim() || unitName === '1g')) {
+    showToast('Enter a unit label (e.g. Per Cake) for fixed-unit foods');
+    return;
+  }
   const p = parseFloat(document.getElementById('fd-p').value);
   const c = parseFloat(document.getElementById('fd-c').value) || 0;
   const f = parseFloat(document.getElementById('fd-f').value) || 0;
@@ -772,11 +780,22 @@ function clearFoodForm() {
 }
 
 function toggleUnitFields() {
-  const isFixed = document.getElementById('fd-unit').value === 'fixed';
+  const unitSel = document.getElementById('fd-unit');
+  const isFixed = unitSel.value === 'fixed';
   const lbl = isFixed ? 'per unit' : 'per 1g';
   document.getElementById('fd-p-label').textContent = 'Protein (' + lbl + ')';
   document.getElementById('fd-c-label').textContent = 'Carbs (' + lbl + ')';
   document.getElementById('fd-f-label').textContent = 'Fat (' + lbl + ')';
+
+  // Keep unit label consistent with type
+  const nameInput = document.getElementById('fd-unit-name');
+  if (!isFixed) {
+    nameInput.value = '1g';
+    nameInput.disabled = true;
+  } else {
+    if (nameInput.value === '1g' || !nameInput.value.trim()) nameInput.value = '';
+    nameInput.disabled = false;
+  }
 }
 
 // ─── LOG ──────────────────────────────────────────────────────────────────────
