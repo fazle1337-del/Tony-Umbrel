@@ -1,4 +1,4 @@
-const CACHE_NAME = 'macro-tracker-v3';
+const CACHE_NAME = 'macro-tracker-v4';
 const OFFLINE_DB = 'macro-tracker-offline';
 const OFFLINE_QUEUE_STORE = 'sync-queue';
 const SNAPSHOT_STORE = 'data-snapshot';

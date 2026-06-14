@@ -529,6 +529,7 @@ async function onCameOnline() {
     // Refresh current view with fresh server data
     await loadFoods();
     await loadDayEntries();
+    await cacheAllData();
   } else {
     setSyncStatus('error');
   }
@@ -645,6 +646,14 @@ async function loadFoods() {
     const cached = await loadSnapshot('foods');
     if (cached) { foods = cached; }
   }
+}
+
+// Pull the entire log once while online and snapshot it, so History (any range)
+// and any past day work offline even if that exact day/range was never opened.
+async function cacheAllData() {
+  if (!isOnline) return;
+  const { data } = await apiFetch('/log');
+  if (data) await saveSnapshot('all-logs', data);
 }
 
 function filterFoodSearch() {
@@ -827,7 +836,11 @@ async function loadDayEntries() {
       await saveSnapshot(snapshotKey, dayEntries);
     }
   } else {
-    const cached = await loadSnapshot(snapshotKey);
+    let cached = await loadSnapshot(snapshotKey);
+    if (!cached) {
+      const all = await loadSnapshot('all-logs');
+      cached = (all && all[date]) ? all[date] : null;
+    }
     dayEntries = cached || [];
     // Also apply any pending queue entries for this date visually
     const queue = await dbGetAll(QUEUE_STORE);
@@ -960,7 +973,14 @@ async function loadHistory() {
     const { data } = await apiFetch(`/log?from=${from}&to=${to}`);
     if (data) { grouped = data; await saveSnapshot(`history-${from}-${to}`, grouped); }
   } else {
-    const cached = await loadSnapshot(`history-${from}-${to}`);
+    let cached = await loadSnapshot(`history-${from}-${to}`);
+    if (!cached) {
+      const all = await loadSnapshot('all-logs');
+      if (all) {
+        cached = {};
+        Object.keys(all).forEach(d => { if (d >= from && d <= to) cached[d] = all[d]; });
+      }
+    }
     grouped = cached || {};
   }
 
@@ -1208,6 +1228,9 @@ async function init() {
   await loadDayEntries();
 
   document.getElementById('loading-overlay').style.display = 'none';
+
+  // Warm the offline cache in the background (full log for History + past days)
+  cacheAllData();
 }
 
 init();
