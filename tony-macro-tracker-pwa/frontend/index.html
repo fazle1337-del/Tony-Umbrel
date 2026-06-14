@@ -500,9 +500,18 @@ async function processQueue() {
 }
 
 // ─── CONNECTIVITY ─────────────────────────────────────────────────────────────
+// Fetch that aborts after `ms` so an unreachable Pi fails fast instead of
+// hanging on the OS-level TCP timeout (~30s+ on mobile).
+function fetchWithTimeout(url, options = {}, ms = 2500) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(timer));
+}
+
 async function checkConnectivity() {
   try {
-    const res = await fetch('/health', { method: 'GET', cache: 'no-store' });
+    const res = await fetchWithTimeout('/health', { method: 'GET', cache: 'no-store' }, 2500);
     return res.ok;
   } catch (e) {
     return false;
@@ -573,10 +582,10 @@ async function apiFetch(path, options = {}) {
   if (isOnline) {
     setSyncStatus('syncing');
     try {
-      const res = await fetch(API_BASE + path, {
+      const res = await fetchWithTimeout(API_BASE + path, {
         ...options,
         headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY, ...(options.headers || {}) }
-      });
+      }, 2500);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setSyncStatus('ok');
