@@ -4,7 +4,7 @@ name: Pen Test Tracker
 tagline: Track pentest findings through remediation with RBAC
 icon: https://cdn-icons-png.flaticon.com/512/2913/2913133.png
 category: files & productivity
-version: "0.3.4"
+version: "0.3.5"
 port: 8080
 description: >-
   Ingest penetration test reports and track findings through remediation.
@@ -26,7 +26,7 @@ submission: ""
 repo: ""
 support: ""
 gallery: []
-releaseNotes: "Penetration Tester and Unique Test Reference are now editable directly from a finding's drawer (previously read-only); saving updates the parent test for all its findings."
+releaseNotes: "New BAU Schedule: a weekly timeline of bookings (scheduled/booked/complete/cancelled) over a configurable period, linked to tests by Unique Test Reference with two-way status sync. Scopes are now title + attached files. Test status uses the new scheduled/booked/complete/cancelled lifecycle."
 dependencies: []
 path: ""
 defaultUsername: "admin@example.com"
