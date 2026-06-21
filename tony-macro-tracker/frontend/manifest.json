@@ -1,11 +1,11 @@
 {
-  "name": "Macro Tracker",
-  "short_name": "Macros",
+  "name": "Macro Tracker (TEST)",
+  "short_name": "Macro TEST",
   "description": "Personal macro and nutrition tracker",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#7F77DD",
-  "theme_color": "#7F77DD",
+  "background_color": "#E8743B",
+  "theme_color": "#E8743B",
   "orientation": "portrait-primary",
   "prefer_related_applications": false,
   "screenshots": [

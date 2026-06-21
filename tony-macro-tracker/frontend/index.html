@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Macro Tracker</title>
+<title>Macro Tracker (TEST)</title>
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#7F77DD">
+<meta name="theme-color" content="#E8743B">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Macro Tracker">
+<meta name="apple-mobile-web-app-title" content="Macro Tracker (TEST)">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -476,11 +476,17 @@ async function getQueueLength() {
   return items.length;
 }
 
-async function processQueue() {
+const MAX_SYNC_ATTEMPTS = 5;
+
+// Returns { synced, failed, skipped, remaining, networkDown } so callers can report
+// honestly. Pass force=true (manual Sync) to retry items that have exhausted their
+// automatic attempts.
+async function processQueue(force = false) {
   const items = await dbGetAll(QUEUE_STORE);
-  if (!items.length) return true;
-  let allOk = true;
+  if (!items.length) return { synced: 0, failed: 0, skipped: 0, remaining: 0, networkDown: false };
+  let synced = 0, failed = 0, skipped = 0, networkDown = false;
   for (const item of items) {
+    if (!force && (item.attempts || 0) >= MAX_SYNC_ATTEMPTS) { skipped++; continue; }
     try {
       const res = await fetch(item.url, {
         method: item.method,
@@ -488,15 +494,48 @@ async function processQueue() {
         body: item.body ? JSON.stringify(item.body) : undefined
       });
       if (res.ok) {
-        await dbDelete(QUEUE_STORE, item.id);
-      } else {
-        allOk = false; break;
+        await dbDelete(QUEUE_STORE, item.id);          // synced OK
+        synced++;
+        continue;
       }
+      let body = ''; try { body = await res.text(); } catch (_) {}
+      if (/duplicate key|already exists/i.test(body)) {
+        await dbDelete(QUEUE_STORE, item.id);          // already on server — treat as done
+        synced++;
+        continue;
+      }
+      // Genuine rejection: keep the item, record attempt + reason, continue to the next.
+      // Do NOT break — one bad item must never stop a multi-day batch.
+      await dbPut(QUEUE_STORE, {
+        ...item,
+        attempts: (item.attempts || 0) + 1,
+        lastError: `HTTP ${res.status}${body ? ': ' + body.slice(0, 120) : ''}`
+      });
+      failed++;
     } catch (e) {
-      allOk = false; break;
+      // Network/connection error — Pi unreachable. Stop; items are fine, just retry later.
+      networkDown = true;
+      break;
     }
   }
-  return allOk;
+  const remaining = await getQueueLength();
+  return { synced, failed, skipped, remaining, networkDown };
+}
+
+// Single source of truth for post-sync feedback — honest about partial success.
+function reportSync(r) {
+  if (r.networkDown) {
+    setSyncStatus(r.remaining ? 'queued' : 'ok');
+    if (r.synced) showToast(`Synced ${r.synced} — connection dropped, ${r.remaining} left`);
+    return;
+  }
+  if (r.remaining === 0) {
+    setSyncStatus('ok');
+    if (r.synced) showToast(`Synced ${r.synced} change${r.synced > 1 ? 's' : ''}`);
+    return;
+  }
+  setSyncStatus('error');
+  showToast(`Synced ${r.synced}, ${r.remaining} couldn't sync — see Import tab`);
 }
 
 // ─── CONNECTIVITY ─────────────────────────────────────────────────────────────
@@ -522,17 +561,12 @@ async function onCameOnline() {
   isOnline = true;
   updateOfflineUI();
   setSyncStatus('syncing');
-  const ok = await processQueue();
-  if (ok) {
-    setSyncStatus('ok');
-    showToast('Back online — changes synced');
-    // Refresh current view with fresh server data
-    await loadFoods();
-    await loadDayEntries();
-    await cacheAllData();
-  } else {
-    setSyncStatus('error');
-  }
+  const r = await processQueue();
+  // Refresh the view with fresh server data regardless of partial failures.
+  await loadFoods();
+  await loadDayEntries();
+  await cacheAllData();
+  reportSync(r);
   updateOfflineUI();
 }
 
@@ -560,9 +594,9 @@ async function updateOfflineUI() {
 
 async function forceSync() {
   setSyncStatus('syncing');
-  const ok = await processQueue();
-  if (ok) { setSyncStatus('ok'); showToast('Synced successfully'); await loadDayEntries(); }
-  else { setSyncStatus('error'); showToast('Sync failed — still offline?'); }
+  const r = await processQueue(true);   // manual: retry even attempt-exhausted items
+  await loadDayEntries();
+  reportSync(r);
   updateOfflineUI();
 }
 
@@ -570,11 +604,18 @@ async function showQueue() {
   const items = await dbGetAll(QUEUE_STORE);
   const el = document.getElementById('queue-display');
   if (!items.length) { el.textContent = 'No pending changes.'; return; }
-  el.innerHTML = items.map(i => `
-    <div style="padding:6px 0;border-bottom:0.5px solid var(--border-light);display:flex;justify-content:space-between">
-      <span>${i.method} ${i.url.replace(API_BASE,'')}</span>
-      <span style="color:var(--text-tertiary);font-size:11px">${new Date(i.timestamp).toLocaleTimeString()}</span>
-    </div>`).join('');
+  el.innerHTML = items.map(i => {
+    const tries = i.attempts || 0;
+    const warn = tries > 0
+      ? `<div style="color:var(--text-danger);font-size:11px;margin-top:2px">⚠ ${tries} failed attempt${tries > 1 ? 's' : ''}${i.lastError ? ' — ' + i.lastError : ''}</div>`
+      : '';
+    return `<div style="padding:6px 0;border-bottom:0.5px solid var(--border-light)">
+      <div style="display:flex;justify-content:space-between">
+        <span>${i.method} ${i.url.replace(API_BASE,'')}</span>
+        <span style="color:var(--text-tertiary);font-size:11px">${new Date(i.timestamp).toLocaleTimeString()}</span>
+      </div>${warn}
+    </div>`;
+  }).join('');
   document.getElementById('sync-now-btn').style.display = isOnline ? 'inline-flex' : 'none';
 }
 
@@ -925,8 +966,17 @@ async function addEntry() {
     if (data) {
       const i = dayEntries.findIndex(e => e.id === entry.id);
       if (i > -1) { dayEntries[i] = data; await saveSnapshot(snapshotKey, dayEntries); renderLog(); }
+      showToast('Entry added');
+    } else {
+      // POST failed (Pi unreachable mid-add). apiFetch flipped us offline —
+      // queue the entry instead of silently losing it.
+      const i = dayEntries.findIndex(e => e.id === entry.id);
+      if (i > -1) dayEntries[i]._pending = true;
+      await enqueue(API_BASE + '/log', 'POST', entry);
+      renderLog();
+      showToast('Saved offline — will sync when home');
+      updateOfflineUI();
     }
-    showToast('Entry added');
   } else {
     await enqueue(API_BASE + '/log', 'POST', entry);
     showToast('Saved offline — will sync when home');
@@ -1209,6 +1259,11 @@ setInterval(async () => {
   if (!isOnline) {
     const serverUp = await checkConnectivity();
     if (serverUp) onCameOnline();
+  } else if ((await getQueueLength()) > 0) {
+    // Online but items still pending — retry them (bounded by per-item attempts).
+    const r = await processQueue();
+    reportSync(r);
+    updateOfflineUI();
   }
 }, 30000);
 
@@ -1228,6 +1283,15 @@ async function init() {
   await loadDayEntries();
 
   document.getElementById('loading-overlay').style.display = 'none';
+
+  // If we opened already-online with unsynced offline changes (queued over several
+  // days), flush them now — init() previously never did this.
+  if (isOnline && (await getQueueLength()) > 0) {
+    const r = await processQueue();
+    await loadDayEntries();
+    reportSync(r);
+    updateOfflineUI();
+  }
 
   // Warm the offline cache in the background (full log for History + past days)
   cacheAllData();
