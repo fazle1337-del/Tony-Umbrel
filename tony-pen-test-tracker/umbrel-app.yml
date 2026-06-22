@@ -4,7 +4,7 @@ name: Pen Test Tracker
 tagline: Track pentest findings through remediation with RBAC
 icon: https://cdn-icons-png.flaticon.com/512/2913/2913133.png
 category: files & productivity
-version: "0.3.7"
+version: "0.4.0"
 port: 8099
 description: >-
   Ingest penetration test reports and track findings through remediation.
@@ -16,8 +16,9 @@ description: >-
   This release (Phase 1 backend) includes role-based access control, tests
   with attached reports, findings with the full field set (gross/net risk,
   likelihood, impact, SLA status, resolver references), owner reassignment
-  with history, and file attachments. Local accounts now; Microsoft Entra ID
-  SSO is planned. The interactive API and docs are served at /docs until the
+  with history, and file attachments. Local accounts plus optional Microsoft
+  Entra ID / OIDC single sign-on with group-to-role mapping (off by default
+  until configured). The interactive API and docs are served at /docs until the
   dedicated web UI lands.
 
 
@@ -33,6 +34,6 @@ submission: ""
 repo: ""
 support: ""
 gallery: []
-releaseNotes: "Moved the app's host port from 8080 to 8099 to avoid a clash with Pi-hole on Umbrel. Also removed the default-credentials popup that appeared on launch (it could block navigation behind an HTTPS reverse proxy); first-login details now live in the app description here in the store. No backend or frontend changes."
+releaseNotes: "Adds optional Microsoft Entra ID / OIDC single sign-on with identity-provider group-to-role mapping, managed from a new admin-only Access tab. SSO is off by default; local username/password login always remains available as a break-glass path. No change to existing data or workflows."
 dependencies: []
 path: ""

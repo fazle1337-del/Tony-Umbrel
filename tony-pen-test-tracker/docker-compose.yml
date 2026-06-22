@@ -10,7 +10,7 @@ services:
   web:
     # Frontend: nginx serving the React bundle, reverse-proxying /api -> api:8000.
     # Multi-arch image on Docker Hub; pin by digest after building (see README).
-    image: docker.io/tonybooom/pen-test-tracker-frontend:0.3.5
+    image: docker.io/tonybooom/pen-test-tracker-frontend:0.4.0
     restart: on-failure
     stop_grace_period: 1m
     depends_on:
@@ -19,7 +19,7 @@ services:
   api:
     # Backend API. Pinned by multi-arch index digest so Pi5 (arm64) and
     # Azure (amd64) both resolve the exact tested build.
-    image: docker.io/tonybooom/pen-test-tracker-backend:0.3.5
+    image: docker.io/tonybooom/pen-test-tracker-backend:0.4.0
     restart: on-failure
     stop_grace_period: 1m
     environment:
