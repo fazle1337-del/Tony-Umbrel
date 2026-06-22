@@ -10,7 +10,7 @@ services:
   web:
     # Frontend: nginx serving the React bundle, reverse-proxying /api -> api:8000.
     # Multi-arch image on Docker Hub; pin by digest after building (see README).
-    image: docker.io/tonybooom/pen-test-tracker-frontend:0.4.0
+    image: docker.io/tonybooom/pen-test-tracker-frontend:0.4.1
     restart: on-failure
     stop_grace_period: 1m
     depends_on:
@@ -19,7 +19,7 @@ services:
   api:
     # Backend API. Pinned by multi-arch index digest so Pi5 (arm64) and
     # Azure (amd64) both resolve the exact tested build.
-    image: docker.io/tonybooom/pen-test-tracker-backend:0.4.0
+    image: docker.io/tonybooom/pen-test-tracker-backend:0.4.1
     restart: on-failure
     stop_grace_period: 1m
     environment:
@@ -33,8 +33,26 @@ services:
       SEED_ADMIN_PASSWORD: ${APP_PASSWORD}
       SEED_ADMIN_NAME: InfoSec Admin
       ATTACHMENTS_DIR: /data/attachments
+      # --- Microsoft Entra ID / OIDC SSO (optional) ---
+      # Non-secret config only; the client secret is read from a file (below),
+      # never committed here. Local login stays available as break-glass.
+      OIDC_ENABLED: "true"
+      OIDC_AUTHORITY: https://login.microsoftonline.com/4acbd9e6-6caa-4d29-8931-853630646556/v2.0
+      OIDC_CLIENT_ID: f1545bce-b459-4b68-89bf-2da4eda26112
+      OIDC_REDIRECT_URI: https://cheeseslice.duckdns.org/api/auth/sso/callback
+      OIDC_POST_LOGIN_REDIRECT: https://cheeseslice.duckdns.org/
+      OIDC_GROUPS_CLAIM: groups
+      # Client secret comes from a file in the app's persistent data dir, so it
+      # never lives in this (publicly mirrored) repo. Create it once on the host:
+      #   printf '%s' '<secret>' > \
+      #     ~/umbrel/app-data/tony-pen-test-tracker/data/secrets/oidc_client_secret
+      OIDC_CLIENT_SECRET_FILE: /data/secrets/oidc_client_secret
+      # Auto-seed the group->role mappings on first boot (group object-ID GUIDs).
+      OIDC_BOOTSTRAP_ADMIN_GROUP: 09a51284-d169-4ed7-ad2c-c1218b9b9a78
+      OIDC_BOOTSTRAP_MEMBER_GROUP: 2696d176-52f6-446a-abf7-05d1da2abdae
     volumes:
       - ${APP_DATA_DIR}/data/attachments:/data/attachments
+      - ${APP_DATA_DIR}/data/secrets:/data/secrets:ro
     depends_on:
       - db
 

@@ -4,7 +4,7 @@ name: Pen Test Tracker
 tagline: Track pentest findings through remediation with RBAC
 icon: https://cdn-icons-png.flaticon.com/512/2913/2913133.png
 category: files & productivity
-version: "0.4.0"
+version: "0.4.1"
 port: 8099
 description: >-
   Ingest penetration test reports and track findings through remediation.
@@ -34,6 +34,6 @@ submission: ""
 repo: ""
 support: ""
 gallery: []
-releaseNotes: "Adds optional Microsoft Entra ID / OIDC single sign-on with identity-provider group-to-role mapping, managed from a new admin-only Access tab. SSO is off by default; local username/password login always remains available as a break-glass path. No change to existing data or workflows."
+releaseNotes: "Enables Microsoft Entra ID single sign-on for this instance, with group-to-role mapping managed from the admin-only Access tab. The OIDC client secret is read from a file in the app's data directory, so it is never stored in the app config. Local username/password login remains available as a break-glass path. Before updating, create the secret file on the host (see the app README)."
 dependencies: []
 path: ""
