@@ -4,7 +4,7 @@ name: Pen Test Tracker
 tagline: Track pentest findings through remediation with RBAC
 icon: https://cdn-icons-png.flaticon.com/512/2913/2913133.png
 category: files & productivity
-version: "0.3.5"
+version: "0.3.6"
 port: 8080
 description: >-
   Ingest penetration test reports and track findings through remediation.
@@ -19,6 +19,13 @@ description: >-
   with history, and file attachments. Local accounts now; Microsoft Entra ID
   SSO is planned. The interactive API and docs are served at /docs until the
   dedicated web UI lands.
+
+
+  First login: sign in as admin@example.com. The admin password is this app's
+  Umbrel password — reveal it under the app's settings on your Umbrel
+  dashboard, or run on your Umbrel host:
+  `sudo docker exec tony-pen-test-tracker_api_1 printenv SEED_ADMIN_PASSWORD`.
+  Change it after your first sign-in.
 developer: Tony
 website: ""
 submitter: Tony
@@ -26,8 +33,6 @@ submission: ""
 repo: ""
 support: ""
 gallery: []
-releaseNotes: "New BAU Schedule: a weekly timeline of bookings (scheduled/booked/complete/cancelled) over a configurable period, linked to tests by Unique Test Reference with two-way status sync. Scopes are now title + attached files. Test status uses the new scheduled/booked/complete/cancelled lifecycle."
+releaseNotes: "Removed the default-credentials popup that appeared on launch and could block navigation behind an HTTPS reverse proxy. First-login details now live in the app description here in the store. No backend or frontend changes."
 dependencies: []
 path: ""
-defaultUsername: "admin@example.com"
-defaultPassword: ""
