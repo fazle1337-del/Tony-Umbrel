@@ -4,8 +4,8 @@ name: Pen Test Tracker
 tagline: Track pentest findings through remediation with RBAC
 icon: https://cdn-icons-png.flaticon.com/512/2913/2913133.png
 category: files & productivity
-version: "0.3.6"
-port: 8080
+version: "0.3.7"
+port: 8099
 description: >-
   Ingest penetration test reports and track findings through remediation.
   InfoSec acts as admin — logging tests, recording findings with gross and
@@ -33,6 +33,6 @@ submission: ""
 repo: ""
 support: ""
 gallery: []
-releaseNotes: "Removed the default-credentials popup that appeared on launch and could block navigation behind an HTTPS reverse proxy. First-login details now live in the app description here in the store. No backend or frontend changes."
+releaseNotes: "Moved the app's host port from 8080 to 8099 to avoid a clash with Pi-hole on Umbrel. Also removed the default-credentials popup that appeared on launch (it could block navigation behind an HTTPS reverse proxy); first-login details now live in the app description here in the store. No backend or frontend changes."
 dependencies: []
 path: ""
