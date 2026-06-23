@@ -4,7 +4,7 @@ name: Pen Test Tracker
 tagline: Track pentest findings through remediation with RBAC
 icon: https://cdn-icons-png.flaticon.com/512/2913/2913133.png
 category: files & productivity
-version: "0.4.1"
+version: "0.5.0"
 port: 8099
 description: >-
   Ingest penetration test reports and track findings through remediation.
@@ -34,6 +34,6 @@ submission: ""
 repo: ""
 support: ""
 gallery: []
-releaseNotes: "Enables Microsoft Entra ID single sign-on for this instance, with group-to-role mapping managed from the admin-only Access tab. The OIDC client secret is read from a file in the app's data directory, so it is never stored in the app config. Local username/password login remains available as a break-glass path. Before updating, create the secret file on the host (see the app README)."
+releaseNotes: "Admins can now delete tests and findings directly from the Findings and Tests tabs (a row trash icon plus a button in the detail drawer); deleting a test also removes its findings. New cross-entity navigation links tests, findings, BAU bookings, and scopes that share a unique test reference — open any record and jump straight to its related entities from the details pane. Members still only see and act on findings assigned to them."
 dependencies: []
 path: ""
