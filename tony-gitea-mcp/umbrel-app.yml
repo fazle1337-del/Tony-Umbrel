@@ -1,0 +1,40 @@
+manifestVersion: 1
+id: tony-gitea-mcp
+name: Gitea MCP
+tagline: Let Claude Code drive your Gitea over MCP
+icon: https://gitea.com/assets/img/logo.png
+category: developer tools
+version: "1.0.0"
+port: 8100
+description: >-
+  Model Context Protocol (MCP) server for your self-hosted Gitea. It exposes
+  Gitea's API (repos, issues, pull requests, branches, releases, users and
+  orgs) as MCP tools so AI coding assistants like Claude Code can read and
+  act on your Gitea directly.
+
+
+  This app runs the official gitea-mcp server (docker.gitea.com/gitea-mcp-server)
+  in streamable-HTTP transport mode and points it at your existing Gitea
+  instance. It is a headless API endpoint, not a web UI — there is no page to
+  open from the Umbrel dashboard.
+
+
+  Connect a client by adding the MCP endpoint, e.g. from Claude Code:
+  `claude mcp add --transport http gitea http://<umbrel-ip>:8100/mcp`
+
+
+  Before it works you must (1) create a Gitea Personal Access Token and paste it
+  into this app's docker-compose.yml (GITEA_ACCESS_TOKEN), and (2) confirm
+  GITEA_HOST points at your Gitea. See this app's README for details.
+developer: Gitea (packaged by Tony)
+website: "https://gitea.com/gitea/gitea-mcp"
+submitter: Tony
+submission: ""
+repo: "https://gitea.com/gitea/gitea-mcp"
+support: "https://gitea.com/gitea/gitea-mcp/issues"
+gallery: []
+releaseNotes: "Initial release. Runs the official gitea-mcp server in streamable-HTTP mode against your existing Gitea instance."
+dependencies: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""

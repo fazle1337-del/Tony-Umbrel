@@ -1,0 +1,28 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: tony-gitea-mcp_mcp_1
+      APP_PORT: 8080
+      # MCP clients (Claude Code) connect programmatically and can't pass
+      # through Umbrel's auth wrapper, so disable the added proxy auth.
+      # The endpoint is reachable by anything on your LAN — keep your Gitea
+      # token scoped, and don't expose this port to the internet.
+      PROXY_AUTH_ADD: "false"
+
+  mcp:
+    # Official Gitea MCP server. Streamable-HTTP transport on :8080, path /mcp.
+    image: docker.gitea.com/gitea-mcp-server:latest
+    restart: on-failure
+    stop_grace_period: 1m
+    command: ["-t", "http", "--port", "8080"]
+    environment:
+      # Your existing Gitea instance (reached via the host LAN IP from inside
+      # the container). Change if your Gitea moves.
+      GITEA_HOST: "http://192.168.1.118:8085"
+      # Gitea Personal Access Token. Create one in Gitea under
+      # Settings -> Applications -> Generate New Token (scopes: repo, issue,
+      # read:user, and read/write:organization as needed), then paste it here.
+      # NOTE: this value lives in this repo when committed — keep the repo private.
+      GITEA_ACCESS_TOKEN: "7fc7588b8c0e215513900244a50bc854a736e5a8"
