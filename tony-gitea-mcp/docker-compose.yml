@@ -16,7 +16,9 @@ services:
     image: docker.gitea.com/gitea-mcp-server:latest
     restart: on-failure
     stop_grace_period: 1m
-    command: ["-t", "http", "--port", "8080"]
+    # The image has no ENTRYPOINT (Cmd is /app/gitea-mcp), so command: must
+    # name the binary first — otherwise Docker tries to exec "-t".
+    command: ["/app/gitea-mcp", "-t", "http", "--port", "8080"]
     environment:
       # Your existing Gitea instance (reached via the host LAN IP from inside
       # the container). Change if your Gitea moves.
