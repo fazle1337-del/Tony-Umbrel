@@ -23,6 +23,10 @@ services:
       DATABASE_URL: postgres://macrouser:changeme123@macro-tracker-db:5432/macrotracker
       API_SECRET: myapisecret123
       NODE_ENV: production
+      GITEA_URL: http://192.168.1.118:8085
+      GITEA_TOKEN: "4a0de6748cf6b450bfce6a01aab186a8daa0da80"
+      GITEA_OWNER: fazle1337
+      GITEA_REPO: macro-tracker-backups
     depends_on:
       db:
         condition: service_healthy
