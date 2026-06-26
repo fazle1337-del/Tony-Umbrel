@@ -4,7 +4,7 @@ name: Pen Test Tracker
 tagline: Track pentest findings through remediation with RBAC
 icon: https://cdn-icons-png.flaticon.com/512/2913/2913133.png
 category: files & productivity
-version: "0.5.0"
+version: "0.6.0"
 port: 8099
 description: >-
   Ingest penetration test reports and track findings through remediation.
@@ -34,6 +34,6 @@ submission: ""
 repo: ""
 support: ""
 gallery: []
-releaseNotes: "Admins can now delete tests and findings directly from the Findings and Tests tabs (a row trash icon plus a button in the detail drawer); deleting a test also removes its findings. New cross-entity navigation links tests, findings, BAU bookings, and scopes that share a unique test reference — open any record and jump straight to its related entities from the details pane. Members still only see and act on findings assigned to them."
+releaseNotes: "Single sign-on can now be configured entirely from the admin Access tab — authority, client ID, redirect, scopes, groups claim, the enable toggle, and the client secret — with no redeploy or host-side files. The client secret is stored encrypted at rest and is write-only (never shown again). Existing deployments are unaffected: with nothing entered, SSO keeps using its current environment configuration until an admin overrides it. Local break-glass login stays independent, so a bad SSO config can always be fixed from the UI."
 dependencies: []
 path: ""
