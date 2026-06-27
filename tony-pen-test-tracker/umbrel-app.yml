@@ -4,7 +4,7 @@ name: Pen Test Tracker
 tagline: Track pentest findings through remediation with RBAC
 icon: https://cdn-icons-png.flaticon.com/512/2913/2913133.png
 category: files & productivity
-version: "0.6.0"
+version: "0.7.0"
 port: 8099
 description: >-
   Ingest penetration test reports and track findings through remediation.
@@ -18,8 +18,7 @@ description: >-
   likelihood, impact, SLA status, resolver references), owner reassignment
   with history, and file attachments. Local accounts plus optional Microsoft
   Entra ID / OIDC single sign-on with group-to-role mapping (off by default
-  until configured). The interactive API and docs are served at /docs until the
-  dedicated web UI lands.
+  until configured).
 
 
   First login: sign in as admin@example.com. The admin password is this app's
@@ -34,6 +33,6 @@ submission: ""
 repo: ""
 support: ""
 gallery: []
-releaseNotes: "Single sign-on can now be configured entirely from the admin Access tab — authority, client ID, redirect, scopes, groups claim, the enable toggle, and the client secret — with no redeploy or host-side files. The client secret is stored encrypted at rest and is write-only (never shown again). Existing deployments are unaffected: with nothing entered, SSO keeps using its current environment configuration until an admin overrides it. Local break-glass login stays independent, so a bad SSO config can always be fixed from the UI."
+releaseNotes: "Security hardening and team management. Logout is now enforced server-side — signing out (or an admin forcing it) immediately invalidates the session token instead of leaving it valid for hours. Login attempts are rate-limited per client to blunt brute-force and credential stuffing. Cross-origin access is locked down, modern security headers (clickjacking, content-type, CSP) are sent, and the interactive API docs are no longer exposed publicly. Admins can now create, rename, and delete Teams directly from the Access tab, so findings and SSO group mappings can be assigned to a team without using the API. All changes are backward compatible and apply automatically on update."
 dependencies: []
 path: ""
