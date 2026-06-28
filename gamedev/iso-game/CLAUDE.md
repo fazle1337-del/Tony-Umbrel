@@ -54,12 +54,13 @@ iso-game/
 
 ## Character
 
-- The player is the CC0 **RobotExpressive** model (`assets/RobotExpressive.glb`),
-  loaded in `main.gd` `_build_player` and turned to face its movement direction
-  (`_face_toward`). Tune size with `PLAYER_SCALE`; swap models via `PLAYER_MODEL`.
-  Replacing it with a custom Blender model: see `../BLENDER_MCP.md`.
-- The model is rigged with animations (Idle, Walking, Running, Wave, …) — not yet
-  played; wiring an `AnimationPlayer` is a future step.
+- The player is **`assets/explorer.glb`** — a custom low-poly explorer modelled
+  in Blender (CC0; see `assets/CREDITS.md`). Loaded in `main.gd` `_build_player`
+  and turned to face its movement direction (`_face_toward`). Tune size with
+  `PLAYER_SCALE`; swap models via `PLAYER_MODEL`. Custom-model workflow:
+  `../BLENDER_MCP.md`.
+- It's a **static mesh** (not rigged) — slides along the path; no walk animation
+  yet. Rigging + an `AnimationPlayer` is a future step.
 
 ## Controls
 

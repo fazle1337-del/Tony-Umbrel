@@ -15,8 +15,8 @@ const GridWorld := preload("res://scripts/grid_world.gd")
 const GRID_RADIUS := 6          # grid spans -RADIUS..RADIUS on both axes
 const MOVE_SPEED := 4.0         # world units / second
 const PLAYER_Y := 0.0           # player rig origin is at the feet, on the ground
-const PLAYER_MODEL := "res://assets/RobotExpressive.glb"  # CC0, see assets/CREDITS.md
-const PLAYER_SCALE := 0.24      # tuned so the model is ~1 cell tall
+const PLAYER_MODEL := "res://assets/explorer.glb"  # our model, see assets/CREDITS.md
+const PLAYER_SCALE := 0.5       # tuned so the model is ~1 cell tall
 const SEED := 12345             # fixed so runs are reproducible
 const SCREENSHOT_FRAMES := 20   # frames to settle before capturing
 const SCREENSHOT_PATH := "res://screenshots/latest.png"
@@ -167,7 +167,7 @@ func _build_obstacles() -> void:
 		add_child(wall)
 
 
-## Loads the CC0 RobotExpressive character (see assets/CREDITS.md). The glb
+## Loads the player model (PLAYER_MODEL; see assets/CREDITS.md). The glb
 ## faces +Z by default, so the model child is turned 180° to align with the
 ## rig's local -Z "front" that _face_toward aims down the movement direction.
 ## The rig (which we move/rotate) keeps its origin at the feet, on the ground.

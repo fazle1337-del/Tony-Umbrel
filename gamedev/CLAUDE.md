@@ -4,6 +4,9 @@ Godot 4 game-dev workspace wired up for Claude Code, with the `godot-mcp` MCP
 server so Claude can drive the engine directly (run projects, edit scenes,
 capture debug output).
 
+> **Starting a session?** Follow **`STARTUP.md`** — the exact boot order for
+> Claude + Godot + Blender (Blender's MCP server must start *before* Claude Code).
+
 ## Environment
 
 | Piece | Value |

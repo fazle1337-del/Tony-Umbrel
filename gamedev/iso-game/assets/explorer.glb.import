@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://f5m7ut7tqdp4"
-path="res://.godot/imported/RobotExpressive.glb-07541cd01ab221f152ce920d7b6b349c.scn"
+uid="uid://bv50tc7043q7o"
+path="res://.godot/imported/explorer.glb-c634b708bacad052b47ae7a90b308170.scn"
 
 [deps]
 
-source_file="res://assets/RobotExpressive.glb"
-dest_files=["res://.godot/imported/RobotExpressive.glb-07541cd01ab221f152ce920d7b6b349c.scn"]
+source_file="res://assets/explorer.glb"
+dest_files=["res://.godot/imported/explorer.glb-c634b708bacad052b47ae7a90b308170.scn"]
 
 [params]
 
