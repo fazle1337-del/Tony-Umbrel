@@ -54,11 +54,11 @@ iso-game/
 
 ## Character
 
-- The player is **`assets/explorer.glb`** — a custom low-poly explorer modelled
-  in Blender (CC0; see `assets/CREDITS.md`). Loaded in `main.gd` `_build_player`
+- The player is **`assets/hiker.glb`** — a Sketchfab "Stylized Outdoor Explorer /
+  Hiker" (CC-BY; see `assets/CREDITS.md`), imported via blender-mcp with its
+  diorama stripped and textures downscaled. Loaded in `main.gd` `_build_player`
   and turned to face its movement direction (`_face_toward`). Tune size with
-  `PLAYER_SCALE`; swap models via `PLAYER_MODEL`. Custom-model workflow:
-  `../BLENDER_MCP.md`.
+  `PLAYER_SCALE`; swap models via `PLAYER_MODEL`. Asset workflow: `../BLENDER_MCP.md`.
 - It's a **static mesh** (not rigged) — slides along the path; no walk animation
   yet. Rigging + an `AnimationPlayer` is a future step.
 
