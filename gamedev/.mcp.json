@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "godot": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/home/tony/.local/share/godot-mcp/build/index.js"
+      ],
+      "env": {
+        "GODOT_PATH": "/home/tony/.local/bin/godot"
+      }
+    }
+  }
+}
