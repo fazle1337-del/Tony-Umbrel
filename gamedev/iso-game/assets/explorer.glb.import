@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://bkvuv7amf7on4"
-path="res://.godot/imported/hiker.glb-1097c1553b96689b0fe25f7fe9d10a27.scn"
+uid="uid://bv50tc7043q7o"
+path="res://.godot/imported/explorer.glb-c634b708bacad052b47ae7a90b308170.scn"
 
 [deps]
 
-source_file="res://assets/hiker.glb"
-dest_files=["res://.godot/imported/hiker.glb-1097c1553b96689b0fe25f7fe9d10a27.scn"]
+source_file="res://assets/explorer.glb"
+dest_files=["res://.godot/imported/explorer.glb-c634b708bacad052b47ae7a90b308170.scn"]
 
 [params]
 
@@ -41,5 +41,5 @@ materials/extract_format=0
 materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
-gltf/embedded_image_handling=3
+gltf/embedded_image_handling=1
 gltf/texture_map_mode=1

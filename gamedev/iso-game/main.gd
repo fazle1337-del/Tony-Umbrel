@@ -15,8 +15,8 @@ const GridWorld := preload("res://scripts/grid_world.gd")
 const GRID_RADIUS := 6          # grid spans -RADIUS..RADIUS on both axes
 const MOVE_SPEED := 4.0         # world units / second
 const PLAYER_Y := 0.0           # player rig origin is at the feet, on the ground
-const PLAYER_MODEL := "res://assets/hiker.glb"  # CC-BY, see assets/CREDITS.md
-const PLAYER_SCALE := 0.75      # tuned so the model is ~1 cell tall
+const PLAYER_MODEL := "res://assets/explorer.glb"  # CC0/original, see assets/CREDITS.md
+const PLAYER_SCALE := 0.5       # tuned so the model is ~1 cell tall
 const SEED := 12345             # fixed so runs are reproducible
 const SCREENSHOT_FRAMES := 20   # frames to settle before capturing
 const SCREENSHOT_PATH := "res://screenshots/latest.png"
@@ -28,6 +28,9 @@ var _path: Array[Vector2i] = []
 var _path_index := 0
 var _markers: Node3D
 var _screenshot_mode := false
+var _anim: AnimationPlayer   # the model's animation player (Walk/Idle/...)
+var _walk_anim := ""
+var _idle_anim := ""
 
 
 func _ready() -> void:
@@ -52,7 +55,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if _path_index >= _path.size():
+	var moving := _path_index < _path.size()
+	_update_anim(moving)
+	if not moving:
 		return
 	var target := _cell_to_player_pos(_path[_path_index])
 	_face_toward(target)
@@ -62,6 +67,15 @@ func _process(delta: float) -> void:
 		_path_index += 1
 		if _path_index >= _path.size():
 			_clear_markers()
+
+
+## Plays Walk while moving, Idle when stopped (no-op if the model has no anims).
+func _update_anim(moving: bool) -> void:
+	if _anim == null:
+		return
+	var want := _walk_anim if moving else _idle_anim
+	if want != "" and _anim.current_animation != want:
+		_anim.play(want)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -180,6 +194,36 @@ func _build_player() -> void:
 	_player = rig
 	add_child(_player)
 	_set_player_cell(_player_cell)
+	_setup_animation(model)
+
+
+## Finds the model's AnimationPlayer, resolves Walk/Idle, loops them, plays Idle.
+func _setup_animation(model: Node3D) -> void:
+	_anim = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	if _anim == null:
+		return
+	_walk_anim = _pick_anim("walk")
+	_idle_anim = _pick_anim("idle")
+	_set_loop(_walk_anim)
+	_set_loop(_idle_anim)
+	if _idle_anim != "":
+		_anim.play(_idle_anim)
+
+
+## First animation whose name contains keyword (case-insensitive), or "".
+func _pick_anim(keyword: String) -> String:
+	for a in _anim.get_animation_list():
+		if keyword in a.to_lower():
+			return a
+	return ""
+
+
+func _set_loop(anim_name: String) -> void:
+	if anim_name == "":
+		return
+	var a := _anim.get_animation(anim_name)
+	if a:
+		a.loop_mode = Animation.LOOP_LINEAR
 
 
 ## Rotates the rig (about Y only) so its front faces the move target.

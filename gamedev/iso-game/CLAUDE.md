@@ -54,13 +54,15 @@ iso-game/
 
 ## Character
 
-- The player is **`assets/hiker.glb`** — a Sketchfab "Stylized Outdoor Explorer /
-  Hiker" (CC-BY; see `assets/CREDITS.md`), imported via blender-mcp with its
-  diorama stripped and textures downscaled. Loaded in `main.gd` `_build_player`
-  and turned to face its movement direction (`_face_toward`). Tune size with
-  `PLAYER_SCALE`; swap models via `PLAYER_MODEL`. Asset workflow: `../BLENDER_MCP.md`.
-- It's a **static mesh** (not rigged) — slides along the path; no walk animation
-  yet. Rigging + an `AnimationPlayer` is a future step.
+- The player is **`assets/explorer.glb`** — a procedural low-poly explorer
+  (CC0; see `assets/CREDITS.md`). Loaded in `main.gd` `_build_player` and turned
+  to face its movement direction (`_face_toward`). Tune size with `PLAYER_SCALE`;
+  swap models via `PLAYER_MODEL`. Asset workflow: `../BLENDER_MCP.md`.
+- It's a **static mesh** (not rigged) — placeholder until the game is further
+  along. The animation hook is already wired: `_setup_animation` finds the
+  model's `AnimationPlayer` and `_update_anim` plays **Walk** while moving /
+  **Idle** when stopped — a no-op now, automatically active once `PLAYER_MODEL`
+  points at a model that ships Walk/Idle clips.
 
 ## Controls
 
