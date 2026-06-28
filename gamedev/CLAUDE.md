@@ -70,8 +70,10 @@ cd ~/.local/share/godot-mcp && git pull && npm install && npm run build
   full pipeline (input, `_process`, `Area2D` collision/signals, `_draw`, UI).
   Headless self-test: `godot --headless --path poc-game -- --self-test`.
 - `iso-game/` — the main game: isometric (real 3D + orthographic camera) with
-  A* click-to-move pathfinding around obstacles. Has its own `CLAUDE.md` and a
-  self-verification harness (see below). **Start here for game work.**
+  A* click-to-move pathfinding around obstacles, finite-state-machine enemies
+  (line-of-sight chase, patrol routes) and player health/damage/respawn. Has its
+  own `CLAUDE.md` and a self-verification harness (see below). **Start here for
+  game work.**
 - New games: create a folder with its own `project.godot`. Keep one Godot
   project per subfolder so the MCP `projectPath` stays unambiguous.
 
