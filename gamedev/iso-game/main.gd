@@ -14,7 +14,9 @@ const GridWorld := preload("res://scripts/grid_world.gd")
 
 const GRID_RADIUS := 6          # grid spans -RADIUS..RADIUS on both axes
 const MOVE_SPEED := 4.0         # world units / second
-const PLAYER_Y := 0.5           # half player height; sits the box on the ground
+const PLAYER_Y := 0.0           # player rig origin is at the feet, on the ground
+const PLAYER_MODEL := "res://assets/RobotExpressive.glb"  # CC0, see assets/CREDITS.md
+const PLAYER_SCALE := 0.24      # tuned so the model is ~1 cell tall
 const SEED := 12345             # fixed so runs are reproducible
 const SCREENSHOT_FRAMES := 20   # frames to settle before capturing
 const SCREENSHOT_PATH := "res://screenshots/latest.png"
@@ -53,6 +55,7 @@ func _process(delta: float) -> void:
 	if _path_index >= _path.size():
 		return
 	var target := _cell_to_player_pos(_path[_path_index])
+	_face_toward(target)
 	_player.position = _player.position.move_toward(target, MOVE_SPEED * delta)
 	if _player.position.distance_to(target) < 0.01:
 		_player_cell = _path[_path_index]
@@ -164,15 +167,26 @@ func _build_obstacles() -> void:
 		add_child(wall)
 
 
+## Loads the CC0 RobotExpressive character (see assets/CREDITS.md). The glb
+## faces +Z by default, so the model child is turned 180° to align with the
+## rig's local -Z "front" that _face_toward aims down the movement direction.
+## The rig (which we move/rotate) keeps its origin at the feet, on the ground.
 func _build_player() -> void:
-	var player := MeshInstance3D.new()
-	var body := BoxMesh.new()
-	body.size = Vector3(0.6, 1.0, 0.6)
-	player.mesh = body
-	player.material_override = _flat_material(Color(0.95, 0.4, 0.3))
-	_player = player
+	var rig := Node3D.new()
+	var model = load(PLAYER_MODEL).instantiate()
+	model.scale = Vector3.ONE * PLAYER_SCALE
+	model.rotation.y = PI
+	rig.add_child(model)
+	_player = rig
 	add_child(_player)
 	_set_player_cell(_player_cell)
+
+
+## Rotates the rig (about Y only) so its front faces the move target.
+func _face_toward(target: Vector3) -> void:
+	var flat := Vector3(target.x, _player.position.y, target.z)
+	if _player.position.distance_to(flat) > 0.001:
+		_player.look_at(flat, Vector3.UP)  # aims local -Z at the target
 
 
 # --- path visualisation ------------------------------------------------------

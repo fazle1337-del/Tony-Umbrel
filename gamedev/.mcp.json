@@ -9,6 +9,13 @@
       "env": {
         "GODOT_PATH": "/home/tony/.local/bin/godot"
       }
+    },
+    "blender": {
+      "type": "stdio",
+      "command": "/home/tony/.local/bin/uvx",
+      "args": [
+        "blender-mcp"
+      ]
     }
   }
 }

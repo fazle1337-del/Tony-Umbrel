@@ -35,6 +35,7 @@ defaults to `DISPLAY=:1`.
 ```
 iso-game/
 ├── main.tscn / main.gd      # world built in code; --screenshot hook
+├── assets/                  # .glb models (CC0; see assets/CREDITS.md)
 ├── scripts/iso_grid.gd      # pure grid<->world math (test-critical)
 ├── scripts/grid_world.gd    # grid state (blocked cells) + A* pathfinding (pure)
 ├── tests/test_*.gd          # headless SceneTree tests, exit 0/1
@@ -50,6 +51,15 @@ iso-game/
   detouring around walls. Yellow markers show the planned path. Clicking a
   blocked cell (a wall) is ignored. Obstacle layout is built in
   `main.gd` `_build_obstacles`.
+
+## Character
+
+- The player is the CC0 **RobotExpressive** model (`assets/RobotExpressive.glb`),
+  loaded in `main.gd` `_build_player` and turned to face its movement direction
+  (`_face_toward`). Tune size with `PLAYER_SCALE`; swap models via `PLAYER_MODEL`.
+  Replacing it with a custom Blender model: see `../BLENDER_MCP.md`.
+- The model is rigged with animations (Idle, Walking, Running, Wave, …) — not yet
+  played; wiring an `AnimationPlayer` is a future step.
 
 ## Controls
 

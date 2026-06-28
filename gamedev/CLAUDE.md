@@ -11,7 +11,9 @@ capture debug output).
 | Engine | Godot **4.7-stable** (GDScript / standard build) |
 | Godot binary | `~/.local/bin/godot` (on PATH — `godot --version`) |
 | MCP server | `godot` → `node ~/.local/share/godot-mcp/build/index.js` (Coding-Solo/godot-mcp) |
-| MCP config | `.mcp.json` (project scope) with `GODOT_PATH=/home/tony/.local/bin/godot` |
+| MCP config | `.mcp.json` (project scope) — `godot` + `blender` servers |
+| Blender | **4.2.9 LTS** → `~/.local/bin/blender` (3D asset pipeline) |
+| `blender-mcp` | `blender` server via `~/.local/bin/uvx blender-mcp`; needs Blender open + addon started — see `BLENDER_MCP.md` |
 
 > The repo root is `/home/tony/Gitea`; this workspace is the `gamedev/` subtree.
 
@@ -48,6 +50,14 @@ To rebuild after updating the server:
 ```bash
 cd ~/.local/share/godot-mcp && git pull && npm install && npm run build
 ```
+
+## 3D assets
+
+- Place models as `.glb` under a project's `assets/` folder; record licensing in
+  `assets/CREDITS.md` (only use CC0 / clearly-licensed assets).
+- `iso-game/` uses the CC0 **RobotExpressive** character as a placeholder.
+- To create custom models (incl. AI image→3D via Hyper3D Rodin), use Blender +
+  `blender-mcp` — setup and workflow in **`BLENDER_MCP.md`**.
 
 ## Project layout
 
