@@ -25,13 +25,18 @@ static func manhattan(a: Vector2i, b: Vector2i) -> int:
 	return absi(a.x - b.x) + absi(a.y - b.y)
 
 
-## Pure transition. `reachable` = an A* path from enemy to player exists.
+## Pure transition.
+##   can_see   = enemy has line of sight to the player (gates initial detection)
+##   reachable = an A* path from enemy to player exists (sustains/aborts a chase)
+## Detection needs LOS; once chasing, the enemy keeps pursuing via the path even
+## around corners, only giving up on distance or an unreachable target.
 func next_state(state: State, enemy: Vector2i, player: Vector2i, home: Vector2i,
-		reachable: bool) -> State:
+		can_see: bool, reachable: bool) -> State:
 	var d := manhattan(enemy, player)
+	var can_detect := can_see and d <= detect_range  # in sight AND close enough
 	match state:
 		State.PATROL:
-			return State.CHASE if reachable and d <= detect_range else State.PATROL
+			return State.CHASE if can_detect else State.PATROL
 		State.CHASE:
 			if not reachable or d > lose_range:
 				return State.RETURN
@@ -41,7 +46,7 @@ func next_state(state: State, enemy: Vector2i, player: Vector2i, home: Vector2i,
 		State.ATTACK:
 			return State.ATTACK if d <= attack_range else State.CHASE
 		State.RETURN:
-			if reachable and d <= detect_range:
+			if can_detect:
 				return State.CHASE
 			return State.PATROL if enemy == home else State.RETURN
 	return state

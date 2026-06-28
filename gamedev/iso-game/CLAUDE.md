@@ -56,12 +56,23 @@ iso-game/
 
 - **Enemy AI (finite state machine).** Enemies run an enum FSM
   (`scripts/enemy_brain.gd`, PATROL → CHASE → ATTACK → RETURN). Transitions are a
-  **pure function** of the enemy/player cells + A*-reachability (so it's unit
-  tested in `tests/test_enemy_brain.gd`); `scripts/enemy.gd` executes the current
-  state (wander / A*-chase / stop-and-face / walk home). Enemies are tinted by
-  state for at-a-glance verification: **grey** patrol, **orange** chase, **red**
-  attack, **blue** return. Spawned in `main.gd` `_build_enemies`. Concept adapted
-  from the kidscancode "changing behaviors" recipe.
+  **pure function** of the enemy/player cells + line-of-sight + A*-reachability
+  (unit tested in `tests/test_enemy_brain.gd`); `scripts/enemy.gd` executes the
+  current state. Tinted by state for at-a-glance verification: **grey** patrol,
+  **orange** chase, **red** attack, **blue** return. Spawned via a per-enemy
+  config table in `main.gd` `_build_enemies`. Concept adapted from the kidscancode
+  "changing behaviors" recipe. Features:
+  - **Line of sight:** detection needs a clear line (`GridWorld.has_line_of_sight`,
+    Bresenham — walls block vision); a started chase persists around corners via
+    A* until the player is out of range/unreachable.
+  - **Tunable per enemy:** `@export` `detect_range`/`lose_range`/`attack_range`/
+    `chase_speed`/`patrol_speed` (set in the spawn table or the inspector).
+  - **Patrol routes:** a waypoint list cycled ping-pong (A*-routed between
+    waypoints); falls back to random wander if no route is given.
+- **Combat / health.** Enemies in ATTACK deal `attack_damage` every
+  `attack_interval`s via the `hit_player` signal. `main.gd` tracks player HP
+  (HUD label + red hit-flash); at 0 HP it shows "YOU DIED" and `_respawn()`
+  resets the player to `PLAYER_START` and sends every enemy home (`Enemy.reset`).
 
 ## Character
 

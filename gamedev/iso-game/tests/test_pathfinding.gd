@@ -15,6 +15,7 @@ func _initialize() -> void:
 	_test_unreachable_returns_empty()
 	_test_blocked_goal_returns_empty()
 	_test_same_cell()
+	_test_line_of_sight()
 
 	if _failures == 0:
 		print("test_pathfinding: OK")
@@ -88,3 +89,12 @@ func _test_same_cell() -> void:
 	var w := GridWorld.new(6)
 	var path := w.find_path(Vector2i(1, 1), Vector2i(1, 1))
 	_check(path == [Vector2i(1, 1)], "start==goal should be single cell")
+
+
+func _test_line_of_sight() -> void:
+	var w := GridWorld.new(6)
+	_check(w.has_line_of_sight(Vector2i(-3, 0), Vector2i(3, 0)), "clear LOS on empty grid")
+	w.set_blocked(Vector2i(0, 0))
+	_check(not w.has_line_of_sight(Vector2i(-3, 0), Vector2i(3, 0)), "wall on the line breaks LOS")
+	_check(w.has_line_of_sight(Vector2i(-3, 2), Vector2i(3, 2)), "parallel row still has LOS")
+	_check(w.has_line_of_sight(Vector2i(0, 0), Vector2i(3, 0)), "endpoint being blocked is ignored")

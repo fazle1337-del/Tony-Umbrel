@@ -44,6 +44,32 @@ func neighbors(cell: Vector2i) -> Array[Vector2i]:
 	return result
 
 
+## True if no blocked cell lies strictly between a and b (Bresenham line).
+## Endpoints are ignored. Used for enemy vision (walls break line of sight).
+func has_line_of_sight(a: Vector2i, b: Vector2i) -> bool:
+	var x := a.x
+	var y := a.y
+	var dx := absi(b.x - x)
+	var dy := absi(b.y - y)
+	var sx := 1 if x < b.x else -1
+	var sy := 1 if y < b.y else -1
+	var err := dx - dy
+	while true:
+		var c := Vector2i(x, y)
+		if c != a and c != b and is_blocked(c):
+			return false
+		if x == b.x and y == b.y:
+			break
+		var e2 := 2 * err
+		if e2 > -dy:
+			err -= dy
+			x += sx
+		if e2 < dx:
+			err += dx
+			y += sy
+	return true
+
+
 ## A* shortest path from start to goal, inclusive of both ends.
 ## Returns [] if start/goal are invalid or no path exists; [start] if equal.
 func find_path(start: Vector2i, goal: Vector2i) -> Array[Vector2i]:

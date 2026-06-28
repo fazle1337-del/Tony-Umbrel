@@ -10,8 +10,17 @@ const IsoGrid := preload("res://scripts/iso_grid.gd")
 const GridWorld := preload("res://scripts/grid_world.gd")
 const EnemyBrain := preload("res://scripts/enemy_brain.gd")
 
-const CHASE_SPEED := 3.2     # a touch slower than the player (4.0) so it's fair
-const PATROL_SPEED := 1.6
+# Per-enemy tunables (set before setup(), or in the inspector if used in a scene).
+@export var detect_range := 5     # cells: start chasing within this range (needs LOS)
+@export var lose_range := 8       # cells: give up the chase beyond this
+@export var attack_range := 1     # cells: attack within this (1 = adjacent)
+@export var chase_speed := 3.2    # world units/s while chasing (player is 4.0)
+@export var patrol_speed := 1.6   # world units/s while patrolling
+@export var attack_damage := 10   # HP dealt per hit while in ATTACK
+@export var attack_interval := 1.0  # seconds between hits
+
+signal hit_player(damage: int)
+
 const ARRIVE := 0.05         # distance at which a step is "reached"
 const BODY_Y := 0.5          # half body height; sits the capsule on the ground
 
@@ -22,16 +31,21 @@ var _brain: EnemyBrain
 var _state: EnemyBrain.State = EnemyBrain.State.PATROL
 var _cell: Vector2i
 var _wander_target: Vector2i
+var _route: Array[Vector2i] = []   # patrol waypoints; empty = random wander
+var _route_index := 0
+var _route_dir := 1                # ping-pong direction along the route
+var _attack_cd := 0.0              # seconds until the next hit lands
 var _mesh: MeshInstance3D
 var _rng := RandomNumberGenerator.new()
 
 
-func setup(world: GridWorld, player: Node3D, home: Vector2i, brain: EnemyBrain,
-		rng_seed: int) -> void:
+func setup(world: GridWorld, player: Node3D, home: Vector2i,
+		route: Array[Vector2i], rng_seed: int) -> void:
 	_world = world
 	_player = player
 	_home = home
-	_brain = brain
+	_route = route
+	_brain = EnemyBrain.new(detect_range, lose_range, attack_range)
 	_cell = home
 	_wander_target = home
 	_rng.seed = rng_seed
@@ -44,19 +58,22 @@ func _physics_process(delta: float) -> void:
 	if _world == null:
 		return
 	var pcell := IsoGrid.world_to_grid(_player.position)
+	var can_see := _world.has_line_of_sight(_cell, pcell)
 	var reachable := not _world.find_path(_cell, pcell).is_empty()
-	var new_state := _brain.next_state(_state, _cell, pcell, _home, reachable)
+	var new_state := _brain.next_state(_state, _cell, pcell, _home, can_see, reachable)
 	if new_state != _state:
 		_state = new_state
+		if _state == EnemyBrain.State.ATTACK:
+			_attack_cd = 0.0          # first hit lands immediately on entering ATTACK
 		_apply_state_color()
 
 	match _state:
 		EnemyBrain.State.CHASE:
-			_step_toward(pcell, CHASE_SPEED, delta)
+			_step_toward(pcell, chase_speed, delta)
 		EnemyBrain.State.RETURN:
-			_step_toward(_home, CHASE_SPEED, delta)
+			_step_toward(_home, chase_speed, delta)
 		EnemyBrain.State.ATTACK:
-			_face(_player.position)
+			_attack(delta)
 		EnemyBrain.State.PATROL:
 			_patrol(delta)
 
@@ -73,10 +90,29 @@ func _step_toward(goal: Vector2i, speed: float, delta: float) -> void:
 		_cell = path[1]
 
 
-## Drifts between random adjacent free cells.
+## PATROL: follow the assigned route (A*-routing between waypoints, ping-pong at
+## the ends), or wander randomly if no route was given.
 func _patrol(delta: float) -> void:
+	if _route.is_empty():
+		_wander(delta)
+		return
+	if _cell == _route[_route_index]:
+		_advance_route()
+	_step_toward(_route[_route_index], patrol_speed, delta)
+
+
+func _advance_route() -> void:
+	if _route.size() <= 1:
+		return
+	if _route_index + _route_dir >= _route.size() or _route_index + _route_dir < 0:
+		_route_dir = -_route_dir
+	_route_index += _route_dir
+
+
+## Fallback when no route: drift between random adjacent free cells.
+func _wander(delta: float) -> void:
 	var tpos := _cell_pos(_wander_target)
-	position = position.move_toward(tpos, PATROL_SPEED * delta)
+	position = position.move_toward(tpos, patrol_speed * delta)
 	if _wander_target != _cell:
 		_face(tpos)
 	if position.distance_to(tpos) < ARRIVE:
@@ -84,6 +120,27 @@ func _patrol(delta: float) -> void:
 		var ns := _world.neighbors(_cell)
 		if not ns.is_empty():
 			_wander_target = ns[_rng.randi() % ns.size()]
+
+
+## ATTACK: stand, face the player, and land a hit every attack_interval seconds.
+func _attack(delta: float) -> void:
+	_face(_player.position)
+	_attack_cd -= delta
+	if _attack_cd <= 0.0:
+		_attack_cd = attack_interval
+		hit_player.emit(attack_damage)
+
+
+## Returns the enemy to its home cell + PATROL state (used on player respawn).
+func reset() -> void:
+	_cell = _home
+	_wander_target = _home
+	_route_index = 0
+	_route_dir = 1
+	_attack_cd = 0.0
+	_state = EnemyBrain.State.PATROL
+	position = _cell_pos(_cell)
+	_apply_state_color()
 
 
 func _face(world_pos: Vector3) -> void:

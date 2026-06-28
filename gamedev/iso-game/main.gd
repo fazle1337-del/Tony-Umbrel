@@ -11,7 +11,6 @@ extends Node3D
 
 const IsoGrid := preload("res://scripts/iso_grid.gd")
 const GridWorld := preload("res://scripts/grid_world.gd")
-const EnemyBrain := preload("res://scripts/enemy_brain.gd")
 const Enemy := preload("res://scripts/enemy.gd")
 
 const GRID_RADIUS := 6          # grid spans -RADIUS..RADIUS on both axes
@@ -22,6 +21,8 @@ const PLAYER_SCALE := 0.5       # tuned so the model is ~1 cell tall
 const SEED := 12345             # fixed so runs are reproducible
 const SCREENSHOT_FRAMES := 20   # frames to settle before capturing
 const SCREENSHOT_PATH := "res://screenshots/latest.png"
+const PLAYER_START := Vector2i(0, 0)  # spawn / respawn cell
+const MAX_HEALTH := 100
 
 var _world: GridWorld
 var _player: Node3D
@@ -33,6 +34,12 @@ var _screenshot_mode := false
 var _anim: AnimationPlayer   # the model's animation player (Walk/Idle/...)
 var _walk_anim := ""
 var _idle_anim := ""
+var _enemies: Array[Enemy] = []
+var _health := MAX_HEALTH
+var _dead := false
+var _hp_label: Label
+var _status_label: Label
+var _flash: ColorRect
 
 
 func _ready() -> void:
@@ -48,6 +55,7 @@ func _ready() -> void:
 	add_child(_markers)
 	_build_player()
 	_build_enemies()
+	_build_hud()
 
 	if _screenshot_mode:
 		# Start in a corner and route to the far side so the shot shows the
@@ -200,15 +208,100 @@ func _build_player() -> void:
 	_setup_animation(model)
 
 
-## Spawns chasing enemies. Homes are picked so one starts near the player (it
-## chases on the screenshot) and one starts far (it patrols).
+## Spawns enemies from a per-enemy config table (tunable ranges/speeds + patrol
+## routes). One starts near the player (chases on the screenshot); one patrols a
+## route far away.
 func _build_enemies() -> void:
-	var homes := [Vector2i(-3, 3), Vector2i(4, -3)]
-	for i in homes.size():
-		var brain := EnemyBrain.new(5, 8, 1)
+	var configs := [
+		{
+			"home": Vector2i(-3, 1),
+			"route": [Vector2i(-3, 1), Vector2i(-3, -3)] as Array[Vector2i],
+			"detect": 5, "chase": 3.2,
+		},
+		{
+			"home": Vector2i(4, -3),
+			"route": [Vector2i(4, -3), Vector2i(4, 4), Vector2i(-1, 4)] as Array[Vector2i],
+			"detect": 6, "chase": 2.6,
+		},
+	]
+	for i in configs.size():
+		var cfg: Dictionary = configs[i]
 		var enemy := Enemy.new()
+		enemy.detect_range = cfg["detect"]
+		enemy.chase_speed = cfg["chase"]
+		enemy.hit_player.connect(_on_player_hit)
 		add_child(enemy)
-		enemy.setup(_world, _player, homes[i], brain, SEED + i + 1)
+		enemy.setup(_world, _player, cfg["home"], cfg["route"], SEED + i + 1)
+		_enemies.append(enemy)
+
+
+# --- HUD + player health -----------------------------------------------------
+
+func _build_hud() -> void:
+	var hud := CanvasLayer.new()
+	add_child(hud)
+
+	_flash = ColorRect.new()                       # full-screen red hit flash
+	_flash.color = Color(1, 0, 0, 0.0)
+	_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(_flash)
+
+	_hp_label = Label.new()
+	_hp_label.position = Vector2(16, 12)
+	_hp_label.add_theme_font_size_override("font_size", 22)
+	hud.add_child(_hp_label)
+
+	_status_label = Label.new()                    # "YOU DIED" / respawn message
+	_status_label.add_theme_font_size_override("font_size", 48)
+	_status_label.set_anchors_preset(Control.PRESET_CENTER)
+	_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_status_label.visible = false
+	hud.add_child(_status_label)
+
+	_update_hp()
+
+
+func _update_hp() -> void:
+	_hp_label.text = "HP %d / %d" % [maxi(_health, 0), MAX_HEALTH]
+
+
+## Called when an enemy lands a hit (Enemy.hit_player signal).
+func _on_player_hit(damage: int) -> void:
+	if _dead:
+		return
+	_health -= damage
+	_update_hp()
+	_flash_red()
+	if _health <= 0:
+		_die()
+
+
+func _flash_red() -> void:
+	_flash.color = Color(1, 0, 0, 0.45)
+	create_tween().tween_property(_flash, "color:a", 0.0, 0.4)
+
+
+func _die() -> void:
+	_dead = true
+	_status_label.text = "YOU DIED"
+	_status_label.visible = true
+	await get_tree().create_timer(1.5).timeout
+	_respawn()
+
+
+## Resets the player to the start and sends every enemy home to patrol.
+func _respawn() -> void:
+	_health = MAX_HEALTH
+	_update_hp()
+	_status_label.visible = false
+	_path.clear()
+	_path_index = 0
+	_clear_markers()
+	_set_player_cell(PLAYER_START)
+	for enemy in _enemies:
+		enemy.reset()
+	_dead = false
 
 
 ## Finds the model's AnimationPlayer, resolves Walk/Idle, loops them, plays Idle.
