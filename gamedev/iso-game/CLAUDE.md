@@ -38,6 +38,8 @@ iso-game/
 ├── assets/                  # .glb models (CC0; see assets/CREDITS.md)
 ├── scripts/iso_grid.gd      # pure grid<->world math (test-critical)
 ├── scripts/grid_world.gd    # grid state (blocked cells) + A* pathfinding (pure)
+├── scripts/enemy_brain.gd   # pure enemy FSM (PATROL/CHASE/ATTACK/RETURN), tested
+├── scripts/enemy.gd         # Enemy node: runs the FSM + executes each state
 ├── tests/test_*.gd          # headless SceneTree tests, exit 0/1
 ├── tools/run_tests.sh       # run all tests
 ├── tools/screenshot.sh      # deterministic frame capture
@@ -51,6 +53,15 @@ iso-game/
   detouring around walls. Yellow markers show the planned path. Clicking a
   blocked cell (a wall) is ignored. Obstacle layout is built in
   `main.gd` `_build_obstacles`.
+
+- **Enemy AI (finite state machine).** Enemies run an enum FSM
+  (`scripts/enemy_brain.gd`, PATROL → CHASE → ATTACK → RETURN). Transitions are a
+  **pure function** of the enemy/player cells + A*-reachability (so it's unit
+  tested in `tests/test_enemy_brain.gd`); `scripts/enemy.gd` executes the current
+  state (wander / A*-chase / stop-and-face / walk home). Enemies are tinted by
+  state for at-a-glance verification: **grey** patrol, **orange** chase, **red**
+  attack, **blue** return. Spawned in `main.gd` `_build_enemies`. Concept adapted
+  from the kidscancode "changing behaviors" recipe.
 
 ## Character
 

@@ -11,6 +11,8 @@ extends Node3D
 
 const IsoGrid := preload("res://scripts/iso_grid.gd")
 const GridWorld := preload("res://scripts/grid_world.gd")
+const EnemyBrain := preload("res://scripts/enemy_brain.gd")
+const Enemy := preload("res://scripts/enemy.gd")
 
 const GRID_RADIUS := 6          # grid spans -RADIUS..RADIUS on both axes
 const MOVE_SPEED := 4.0         # world units / second
@@ -45,6 +47,7 @@ func _ready() -> void:
 	_markers = Node3D.new()
 	add_child(_markers)
 	_build_player()
+	_build_enemies()
 
 	if _screenshot_mode:
 		# Start in a corner and route to the far side so the shot shows the
@@ -195,6 +198,17 @@ func _build_player() -> void:
 	add_child(_player)
 	_set_player_cell(_player_cell)
 	_setup_animation(model)
+
+
+## Spawns chasing enemies. Homes are picked so one starts near the player (it
+## chases on the screenshot) and one starts far (it patrols).
+func _build_enemies() -> void:
+	var homes := [Vector2i(-3, 3), Vector2i(4, -3)]
+	for i in homes.size():
+		var brain := EnemyBrain.new(5, 8, 1)
+		var enemy := Enemy.new()
+		add_child(enemy)
+		enemy.setup(_world, _player, homes[i], brain, SEED + i + 1)
 
 
 ## Finds the model's AnimationPlayer, resolves Walk/Idle, loops them, plays Idle.
