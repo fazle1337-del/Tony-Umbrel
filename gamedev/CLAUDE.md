@@ -53,8 +53,35 @@ cd ~/.local/share/godot-mcp && git pull && npm install && npm run build
 
 - `test-project/` — minimal Godot 4 project used to verify the toolchain.
   Run it with `godot --headless --path test-project`.
+- `poc-game/` — "catch the falling blocks" 2D proof-of-concept. Smoke-tests the
+  full pipeline (input, `_process`, `Area2D` collision/signals, `_draw`, UI).
+  Headless self-test: `godot --headless --path poc-game -- --self-test`.
+- `iso-game/` — the main game: isometric (real 3D + orthographic camera) with
+  A* click-to-move pathfinding around obstacles. Has its own `CLAUDE.md` and a
+  self-verification harness (see below). **Start here for game work.**
 - New games: create a folder with its own `project.godot`. Keep one Godot
   project per subfolder so the MCP `projectPath` stays unambiguous.
+
+## Self-verification harness (autonomy loop)
+
+Game correctness is visual/feel-based, which an agent can't perceive natively.
+The fix is to convert it into observable signals, so changes can be self-checked
+without a human in the loop. `iso-game/` is the reference implementation:
+
+- **Logic → headless tests.** Pure, stateless functions (e.g. coordinate/grid
+  math, pathfinding) live in `scripts/` and are covered by `tests/test_*.gd`
+  (`extends SceneTree`, assert, `quit(0|1)`). Run all via `tools/run_tests.sh`.
+- **Visuals → deterministic screenshots.** A `--screenshot` cmdline flag renders
+  a fixed frame to `screenshots/latest.png` then quits; `tools/screenshot.sh`
+  wraps it (needs a display — defaults to `DISPLAY=:1` — since rendering can't
+  run under `--headless`). Read the PNG to verify framing/layout/colour.
+- **Determinism is the contract:** seeded RNG, fixed camera, fixed frame count —
+  so two runs are comparable and regressions are visible.
+
+> Tests don't load `main.tscn`/`main.gd`, so green tests don't prove the scene
+> loads — always run the screenshot too after touching scene/UI code.
+
+Apply this pattern to every new game and mechanic.
 
 ## Conventions
 
