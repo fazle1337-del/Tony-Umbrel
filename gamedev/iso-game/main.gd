@@ -14,9 +14,9 @@ const GridWorld := preload("res://scripts/grid_world.gd")
 const Enemy := preload("res://scripts/enemy.gd")
 const Laser := preload("res://scripts/laser.gd")
 const Bullet := preload("res://scripts/bullet.gd")
+const PlayerStats := preload("res://scripts/player_stats.gd")
 
 const GRID_RADIUS := 6          # grid spans -RADIUS..RADIUS on both axes
-const MOVE_SPEED := 4.0         # world units / second
 const PLAYER_Y := 0.0           # player rig origin is at the feet, on the ground
 const PLAYER_MODEL := "res://assets/explorer.glb"  # CC0/original, see assets/CREDITS.md
 const PLAYER_SCALE := 0.5       # tuned so the model is ~1 cell tall
@@ -24,7 +24,7 @@ const SEED := 12345             # fixed so runs are reproducible
 const SCREENSHOT_FRAMES := 20   # frames to settle before capturing
 const SCREENSHOT_PATH := "res://screenshots/latest.png"
 const PLAYER_START := Vector2i(0, 0)  # spawn / respawn cell
-const MAX_HEALTH := 100
+# Gun base values; PlayerStats multipliers (damage_mult/fire_rate_mult) scale them.
 const PLAYER_ATTACK_DAMAGE := 15   # HP per shot (enemy max_health 30 -> 2 shots)
 const PLAYER_ATTACK_COOLDOWN := 0.4  # seconds between shots (fire rate)
 const LASER_RANGE := 14.0          # max beam / shot range (world units)
@@ -42,7 +42,8 @@ var _anim: AnimationPlayer   # the model's animation player (Walk/Idle/...)
 var _walk_anim := ""
 var _idle_anim := ""
 var _enemies: Array[Enemy] = []
-var _health := MAX_HEALTH
+var _stats := PlayerStats.new()
+var _health: int
 var _attack_cd := 0.0
 var _special_cd := 0.0
 var _dead := false
@@ -54,6 +55,7 @@ var _flash: ColorRect
 func _ready() -> void:
 	seed(SEED)
 	_screenshot_mode = "--screenshot" in OS.get_cmdline_user_args()
+	_health = _stats.max_health
 
 	_world = GridWorld.new(GRID_RADIUS)
 	_build_camera()
@@ -135,7 +137,7 @@ func _flatten(v: Vector3) -> Vector3:
 ## Moves the player along `dir`, sliding along walls/bounds by resolving each axis
 ## independently (so grazing a wall doesn't stop all motion).
 func _move_player(dir: Vector3, delta: float) -> void:
-	var step := dir * MOVE_SPEED * delta
+	var step := dir * _stats.move_speed * delta
 	var pos := _player.position
 	var try_x := pos + Vector3(step.x, 0, 0)
 	if _is_walkable(try_x):
@@ -369,7 +371,7 @@ func _build_hud() -> void:
 
 
 func _update_hp() -> void:
-	_hp_label.text = "HP %d / %d" % [maxi(_health, 0), MAX_HEALTH]
+	_hp_label.text = "HP %d / %d" % [maxi(_health, 0), _stats.max_health]
 
 
 ## Called when an enemy lands a hit (Enemy.hit_player signal).
@@ -392,7 +394,7 @@ func _try_attack() -> void:
 	var dir := _aim_dir()
 	if dir == Vector2.ZERO:
 		return
-	_attack_cd = PLAYER_ATTACK_COOLDOWN
+	_attack_cd = _stats.cooldown_for(PLAYER_ATTACK_COOLDOWN)
 	var muzzle_xz := _muzzle()
 	var from := Vector3(muzzle_xz.x, LASER_Y, muzzle_xz.y)
 	var dir3 := Vector3(dir.x, 0.0, dir.y)
@@ -400,24 +402,24 @@ func _try_attack() -> void:
 	var hit_enemy: int = hit["enemy"]
 	var target: Enemy = _enemies[hit_enemy] if hit_enemy >= 0 else null
 	_show_muzzle_flash(from)
-	_spawn_bullet(from, dir3, hit["distance"], target)
+	_spawn_bullet(from, dir3, hit["distance"], target, _stats.damage_for(PLAYER_ATTACK_DAMAGE))
 
 
 ## Spawns the projectile. Live: it travels `dist` and damages `target` on arrival
 ## (re-checked valid, since it may have died meanwhile). Screenshot: a static
 ## glowing bullet placed mid-flight, with the damage applied immediately so the
 ## deterministic frame shows the hit enemy's depleted bar.
-func _spawn_bullet(from: Vector3, dir3: Vector3, dist: float, target: Enemy) -> void:
+func _spawn_bullet(from: Vector3, dir3: Vector3, dist: float, target: Enemy, dmg: int) -> void:
 	var bullet := Bullet.new()
 	add_child(bullet)
 	if _screenshot_mode:
 		if target != null:
-			target.take_damage(PLAYER_ATTACK_DAMAGE)
+			target.take_damage(dmg)
 		bullet.setup(from + dir3 * dist * 0.6, dir3, 0.0, false, Callable())
 		return
 	var on_hit := func() -> void:
 		if is_instance_valid(target):
-			target.take_damage(PLAYER_ATTACK_DAMAGE)
+			target.take_damage(dmg)
 	bullet.setup(from, dir3, dist, true, on_hit)
 
 
@@ -468,7 +470,7 @@ func _die() -> void:
 
 ## Resets the player to the start and sends every enemy home to patrol.
 func _respawn() -> void:
-	_health = MAX_HEALTH
+	_health = _stats.max_health
 	_update_hp()
 	_status_label.visible = false
 	_set_player_cell(PLAYER_START)
