@@ -39,7 +39,8 @@ iso-game/
 ├── scripts/iso_grid.gd      # pure grid<->world math (test-critical)
 ├── scripts/grid_world.gd    # grid state (blocked cells) + A* pathfinding (pure)
 ├── scripts/enemy_brain.gd   # pure enemy FSM (PATROL/CHASE/ATTACK/RETURN), tested
-├── scripts/enemy.gd         # Enemy node: runs the FSM + executes each state
+├── scripts/enemy.gd         # Enemy node: runs the FSM + executes each state; HP
+├── scripts/combat.gd        # pure melee targeting (player swing), tested
 ├── tests/test_*.gd          # headless SceneTree tests, exit 0/1
 ├── tools/run_tests.sh       # run all tests
 ├── tools/screenshot.sh      # deterministic frame capture
@@ -73,6 +74,20 @@ iso-game/
   `attack_interval`s via the `hit_player` signal. `main.gd` tracks player HP
   (HUD label + red hit-flash); at 0 HP it shows "YOU DIED" and `_respawn()`
   resets the player to `PLAYER_START` and sends every enemy home (`Enemy.reset`).
+- **Player combat (two-sided).** Press **Space** to swing: `main.gd` `_try_attack`
+  (cooldown-gated) calls `Combat.targets_in_range` — a **pure**, unit-tested
+  cleave-targeting function (`scripts/combat.gd`, tested in
+  `tests/test_combat.gd`) — and deals `PLAYER_ATTACK_DAMAGE` to every enemy
+  within `PLAYER_ATTACK_RANGE` cells. Enemies have HP (`max_health`,
+  `Enemy.take_damage`): a white emission flash on each hit, and at 0 HP they emit
+  `died`, which `main.gd` `_on_enemy_died` despawns. A translucent ring
+  (`_show_swing`) marks each swing. Killed enemies stay dead through a respawn
+  (seed for a future "clear all enemies" objective).
+  - **Enemy health bars:** a floating bar above each enemy (`Enemy._build_health_bar`)
+    — dark backing + a left-anchored fill scaled by the HP fraction, coloured
+    green→red as it drains. Shown only when damaged (hidden at full HP). The fixed
+    iso camera means it faces the viewer by copying the camera's rotation each
+    frame (`_orient_health_bar`) rather than billboarding.
 
 ## Character
 
@@ -89,6 +104,7 @@ iso-game/
 ## Controls
 
 - **Left click** a ground tile → player routes there around any walls.
+- **Space** → swing at adjacent enemies (melee cleave).
 
 ## Conventions
 

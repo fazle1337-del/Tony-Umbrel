@@ -12,6 +12,7 @@ extends Node3D
 const IsoGrid := preload("res://scripts/iso_grid.gd")
 const GridWorld := preload("res://scripts/grid_world.gd")
 const Enemy := preload("res://scripts/enemy.gd")
+const Combat := preload("res://scripts/combat.gd")
 
 const GRID_RADIUS := 6          # grid spans -RADIUS..RADIUS on both axes
 const MOVE_SPEED := 4.0         # world units / second
@@ -23,6 +24,9 @@ const SCREENSHOT_FRAMES := 20   # frames to settle before capturing
 const SCREENSHOT_PATH := "res://screenshots/latest.png"
 const PLAYER_START := Vector2i(0, 0)  # spawn / respawn cell
 const MAX_HEALTH := 100
+const PLAYER_ATTACK_RANGE := 1     # cells: a swing reaches adjacent enemies
+const PLAYER_ATTACK_DAMAGE := 15   # HP per swing (enemy max_health 30 -> 2 hits)
+const PLAYER_ATTACK_COOLDOWN := 0.4  # seconds between swings
 
 var _world: GridWorld
 var _player: Node3D
@@ -36,6 +40,7 @@ var _walk_anim := ""
 var _idle_anim := ""
 var _enemies: Array[Enemy] = []
 var _health := MAX_HEALTH
+var _attack_cd := 0.0
 var _dead := false
 var _hp_label: Label
 var _status_label: Label
@@ -58,14 +63,16 @@ func _ready() -> void:
 	_build_hud()
 
 	if _screenshot_mode:
-		# Start in a corner and route to the far side so the shot shows the
-		# player detouring around the wall, with the path marked out.
-		_set_player_cell(Vector2i(-3, 0))
-		_move_to_cell(Vector2i(3, 0))
+		# Stand next to enemy 0 (home -3,1) and swing: the shot shows the swing
+		# ring, the white hit-flash, and the enemy turning red as it retaliates.
+		_set_player_cell(Vector2i(-2, 1))
+		_try_attack()
 		_capture_after_settle()
 
 
 func _process(delta: float) -> void:
+	if _attack_cd > 0.0:
+		_attack_cd -= delta
 	var moving := _path_index < _path.size()
 	_update_anim(moving)
 	if not moving:
@@ -95,6 +102,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		var cell = _mouse_to_cell(event.position)  # may be null; can't infer type
 		if cell != null:
 			_move_to_cell(cell)
+	elif event is InputEventKey and event.pressed and not event.echo \
+			and event.keycode == KEY_SPACE:
+		_try_attack()
 
 
 ## Plans an A* route from the player's current cell and starts walking it.
@@ -230,6 +240,7 @@ func _build_enemies() -> void:
 		enemy.detect_range = cfg["detect"]
 		enemy.chase_speed = cfg["chase"]
 		enemy.hit_player.connect(_on_player_hit)
+		enemy.died.connect(_on_enemy_died)
 		add_child(enemy)
 		enemy.setup(_world, _player, cfg["home"], cfg["route"], SEED + i + 1)
 		_enemies.append(enemy)
@@ -251,6 +262,13 @@ func _build_hud() -> void:
 	_hp_label.position = Vector2(16, 12)
 	_hp_label.add_theme_font_size_override("font_size", 22)
 	hud.add_child(_hp_label)
+
+	var hint := Label.new()                        # controls reminder
+	hint.text = "Left-click: move    Space: attack"
+	hint.position = Vector2(16, 44)
+	hint.add_theme_font_size_override("font_size", 15)
+	hint.modulate = Color(1, 1, 1, 0.7)
+	hud.add_child(hint)
 
 	_status_label = Label.new()                    # "YOU DIED" / respawn message
 	_status_label.add_theme_font_size_override("font_size", 48)
@@ -277,7 +295,49 @@ func _on_player_hit(damage: int) -> void:
 		_die()
 
 
+## Space: swing at every enemy within PLAYER_ATTACK_RANGE of the player's cell
+## (a cleave). Gated by a cooldown so it can't fire every frame.
+func _try_attack() -> void:
+	if _dead or _attack_cd > 0.0:
+		return
+	_attack_cd = PLAYER_ATTACK_COOLDOWN
+	_show_swing()
+	var cells: Array[Vector2i] = []
+	for enemy in _enemies:
+		cells.append(enemy.cell())
+	for i in Combat.targets_in_range(_player_cell, cells, PLAYER_ATTACK_RANGE):
+		_enemies[i].take_damage(PLAYER_ATTACK_DAMAGE)
+
+
+## A translucent ring that briefly expands and fades at the player's feet.
+func _show_swing() -> void:
+	var ring := MeshInstance3D.new()
+	var mesh := TorusMesh.new()
+	mesh.inner_radius = 0.5
+	mesh.outer_radius = 0.7
+	ring.mesh = mesh
+	var mat := _flat_material(Color(1, 1, 1, 0.6))
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ring.material_override = mat
+	ring.position = _player.position + Vector3.UP * 0.1
+	add_child(ring)
+	if _screenshot_mode:
+		return  # leave it static so the deterministic frame captures the swing
+	var tween := create_tween().set_parallel()
+	tween.tween_property(ring, "scale", Vector3.ONE * 1.6, 0.3)
+	tween.tween_property(mat, "albedo_color:a", 0.0, 0.3)
+	tween.chain().tween_callback(ring.queue_free)
+
+
+## Enemy reached 0 HP (Enemy.died signal): drop it from the roster and despawn.
+func _on_enemy_died(enemy) -> void:
+	_enemies.erase(enemy)
+	enemy.queue_free()
+
+
 func _flash_red() -> void:
+	if _screenshot_mode:
+		return  # keep the deterministic frame's colours true (no full-screen wash)
 	_flash.color = Color(1, 0, 0, 0.45)
 	create_tween().tween_property(_flash, "color:a", 0.0, 0.4)
 
