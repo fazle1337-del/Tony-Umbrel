@@ -12,7 +12,8 @@ extends Node3D
 const IsoGrid := preload("res://scripts/iso_grid.gd")
 const GridWorld := preload("res://scripts/grid_world.gd")
 const Enemy := preload("res://scripts/enemy.gd")
-const Combat := preload("res://scripts/combat.gd")
+const Laser := preload("res://scripts/laser.gd")
+const Bullet := preload("res://scripts/bullet.gd")
 
 const GRID_RADIUS := 6          # grid spans -RADIUS..RADIUS on both axes
 const MOVE_SPEED := 4.0         # world units / second
@@ -24,16 +25,18 @@ const SCREENSHOT_FRAMES := 20   # frames to settle before capturing
 const SCREENSHOT_PATH := "res://screenshots/latest.png"
 const PLAYER_START := Vector2i(0, 0)  # spawn / respawn cell
 const MAX_HEALTH := 100
-const PLAYER_ATTACK_RANGE := 1     # cells: a swing reaches adjacent enemies
-const PLAYER_ATTACK_DAMAGE := 15   # HP per swing (enemy max_health 30 -> 2 hits)
-const PLAYER_ATTACK_COOLDOWN := 0.4  # seconds between swings
+const PLAYER_ATTACK_DAMAGE := 15   # HP per shot (enemy max_health 30 -> 2 shots)
+const PLAYER_ATTACK_COOLDOWN := 0.4  # seconds between shots (fire rate)
+const LASER_RANGE := 14.0          # max beam / shot range (world units)
+const LASER_WIDTH := 0.02          # beam thickness
+const LASER_Y := 0.55              # emit height (roughly chest level)
+const GUN_OFFSET := 0.22           # muzzle offset to the player's right
 
 var _world: GridWorld
 var _player: Node3D
-var _player_cell := Vector2i(0, 0)
-var _path: Array[Vector2i] = []
-var _path_index := 0
-var _markers: Node3D
+var _laser: MeshInstance3D            # laser-sight beam (child of the player rig)
+var _laser_mesh: BoxMesh             # its mesh; we resize length each frame
+var _player_cell := Vector2i(0, 0)   # spawn cell (placement anchor)
 var _screenshot_mode := false
 var _anim: AnimationPlayer   # the model's animation player (Walk/Idle/...)
 var _walk_anim := ""
@@ -41,6 +44,7 @@ var _idle_anim := ""
 var _enemies: Array[Enemy] = []
 var _health := MAX_HEALTH
 var _attack_cd := 0.0
+var _special_cd := 0.0
 var _dead := false
 var _hp_label: Label
 var _status_label: Label
@@ -56,35 +60,40 @@ func _ready() -> void:
 	_build_light()
 	_build_ground()
 	_build_obstacles()
-	_markers = Node3D.new()
-	add_child(_markers)
 	_build_player()
+	_build_laser()
 	_build_enemies()
 	_build_hud()
 
 	if _screenshot_mode:
-		# Stand next to enemy 0 (home -3,1) and swing: the shot shows the swing
-		# ring, the white hit-flash, and the enemy turning red as it retaliates.
-		_set_player_cell(Vector2i(-2, 1))
+		# Stand a few cells from enemy 0 (home -3,1) in the open and shoot it:
+		# the shot shows the offset laser sight, the yellow tracer, and the
+		# enemy's depleted health bar where the beam lands.
+		_set_player_cell(Vector2i(-3, 4))
+		_face_toward(IsoGrid.grid_to_world(Vector2i(-3, 1)))  # down the open column
 		_try_attack()
+		_update_laser()
 		_capture_after_settle()
 
 
 func _process(delta: float) -> void:
-	if _attack_cd > 0.0:
-		_attack_cd -= delta
-	var moving := _path_index < _path.size()
-	_update_anim(moving)
-	if not moving:
+	_attack_cd = maxf(_attack_cd - delta, 0.0)
+	_special_cd = maxf(_special_cd - delta, 0.0)
+	if _dead:
+		_laser.visible = false
+		_update_anim(false)
 		return
-	var target := _cell_to_player_pos(_path[_path_index])
-	_face_toward(target)
-	_player.position = _player.position.move_toward(target, MOVE_SPEED * delta)
-	if _player.position.distance_to(target) < 0.01:
-		_player_cell = _path[_path_index]
-		_path_index += 1
-		if _path_index >= _path.size():
-			_clear_markers()
+	if _screenshot_mode:                  # screenshot stages its own pose in _ready
+		_update_anim(false)
+		return
+	_aim_at_mouse()                       # face the cursor (independent of motion)
+	var dir := _move_input()
+	if dir != Vector3.ZERO:
+		_move_player(dir, delta)
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_try_attack()                     # automatic: hold to fire (cooldown-paced)
+	_update_laser()
+	_update_anim(dir != Vector3.ZERO)
 
 
 ## Plays Walk while moving, Idle when stopped (no-op if the model has no anims).
@@ -97,38 +106,117 @@ func _update_anim(moving: bool) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Left-click is automatic fire, polled in _process; only the special is discrete.
 	if event is InputEventMouseButton and event.pressed \
-			and event.button_index == MOUSE_BUTTON_LEFT:
-		var cell = _mouse_to_cell(event.position)  # may be null; can't infer type
-		if cell != null:
-			_move_to_cell(cell)
-	elif event is InputEventKey and event.pressed and not event.echo \
-			and event.keycode == KEY_SPACE:
-		_try_attack()
+			and event.button_index == MOUSE_BUTTON_RIGHT:
+		_try_special()
 
 
-## Plans an A* route from the player's current cell and starts walking it.
-func _move_to_cell(goal: Vector2i) -> void:
-	var path := _world.find_path(_player_cell, goal)
-	if path.is_empty():
-		return  # unreachable or blocked goal — ignore the click
-	_path = path
-	_path_index = 1  # index 0 is the current cell; head for the next waypoint
-	_show_path_markers()
-
-
-## Casts a click onto the ground plane (y=0); returns the grid cell or null.
-func _mouse_to_cell(screen_pos: Vector2):
+## Movement direction from the arrow keys, mapped to the screen via the camera so
+## "up" travels into the screen regardless of the iso yaw. Combining keys gives
+## the 8 diagonals (a wider arc than the old 4-direction grid routing). Returns a
+## flattened unit vector, or ZERO when no key is held.
+func _move_input() -> Vector3:
+	var x := Input.get_axis("ui_left", "ui_right")
+	var y := Input.get_axis("ui_down", "ui_up")
+	if x == 0.0 and y == 0.0:
+		return Vector3.ZERO
 	var cam := get_viewport().get_camera_3d()
-	var hit = Plane(Vector3.UP, 0.0).intersects_ray(
+	var right := _flatten(cam.global_transform.basis.x)   # screen-right on the ground
+	var fwd := _flatten(-cam.global_transform.basis.z)     # screen-up on the ground
+	return (right * x + fwd * y).normalized()
+
+
+## Projects a vector onto the ground plane (drops Y) and normalizes it.
+func _flatten(v: Vector3) -> Vector3:
+	return Vector3(v.x, 0.0, v.z).normalized()
+
+
+## Moves the player along `dir`, sliding along walls/bounds by resolving each axis
+## independently (so grazing a wall doesn't stop all motion).
+func _move_player(dir: Vector3, delta: float) -> void:
+	var step := dir * MOVE_SPEED * delta
+	var pos := _player.position
+	var try_x := pos + Vector3(step.x, 0, 0)
+	if _is_walkable(try_x):
+		pos = try_x
+	var try_z := pos + Vector3(0, 0, step.z)
+	if _is_walkable(try_z):
+		pos = try_z
+	_player.position = pos
+
+
+## A world position is walkable if its cell is in bounds and not a wall.
+func _is_walkable(pos: Vector3) -> bool:
+	var cell := IsoGrid.world_to_grid(pos)
+	return _world.is_in_bounds(cell) and not _world.is_blocked(cell)
+
+
+## Builds the laser-sight beam as a child of the player rig so it inherits the
+## mouse-aim rotation; a thin box along the rig's local -Z (the "forward" that
+## _face_toward aims). We only resize its length each frame (_update_laser).
+func _build_laser() -> void:
+	_laser = MeshInstance3D.new()
+	_laser_mesh = BoxMesh.new()
+	_laser_mesh.size = Vector3(LASER_WIDTH, LASER_WIDTH, 0.01)
+	_laser.mesh = _laser_mesh
+	var mat := _flat_material(Color(1.0, 0.15, 0.15, 0.4))   # thin, semi-transparent
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED  # reads the same in any light
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_laser.material_override = mat
+	_laser.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_player.add_child(_laser)
+
+
+## Casts the beam from the player along its aim and stretches the box to the hit
+## distance (stops at walls/arena edge/enemies — see Laser.cast_distance).
+func _update_laser() -> void:
+	var dir := _aim_dir()
+	if dir == Vector2.ZERO:
+		_laser.visible = false
+		return
+	var dist := Laser.cast_distance(_world, _enemy_positions(), _muzzle(), dir, LASER_RANGE)
+	_laser.visible = true
+	_laser_mesh.size = Vector3(LASER_WIDTH, LASER_WIDTH, dist)
+	# Offset right (the muzzle) and centered along the rig's local -Z (forward).
+	_laser.position = Vector3(GUN_OFFSET, LASER_Y, -dist * 0.5)
+
+
+## The flat (XZ) aim direction the rig faces, normalized — or ZERO if degenerate.
+func _aim_dir() -> Vector2:
+	var fwd := -_player.global_transform.basis.z   # rig forward = aim direction
+	var dir := Vector2(fwd.x, fwd.z)
+	return dir.normalized() if dir.length() > 0.001 else Vector2.ZERO
+
+
+## World XZ of the muzzle: the player's position offset to its right by GUN_OFFSET.
+func _muzzle() -> Vector2:
+	var right := _player.global_transform.basis.x
+	var pos := _player.position + right * GUN_OFFSET
+	return Vector2(pos.x, pos.z)
+
+
+func _enemy_positions() -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for enemy in _enemies:
+		out.append(Vector2(enemy.position.x, enemy.position.z))
+	return out
+
+
+## Faces the player toward the ground point under the mouse cursor.
+func _aim_at_mouse() -> void:
+	var ground = _mouse_to_ground()  # Variant: Vector3 or null — can't infer type
+	if ground != null:
+		_face_toward(ground)
+
+
+## Casts the mouse ray onto the ground plane (y=0); returns the world point or null.
+func _mouse_to_ground():
+	var cam := get_viewport().get_camera_3d()
+	var screen_pos := get_viewport().get_mouse_position()
+	return Plane(Vector3.UP, 0.0).intersects_ray(
 			cam.project_ray_origin(screen_pos),
 			cam.project_ray_normal(screen_pos))
-	if hit == null:
-		return null
-	var cell := IsoGrid.world_to_grid(hit)
-	if not _world.is_in_bounds(cell):
-		return null
-	return cell
 
 
 func _cell_to_player_pos(cell: Vector2i) -> Vector3:
@@ -264,7 +352,7 @@ func _build_hud() -> void:
 	hud.add_child(_hp_label)
 
 	var hint := Label.new()                        # controls reminder
-	hint.text = "Left-click: move    Space: attack"
+	hint.text = "Arrows: move    Mouse: aim    L-click: shoot    R-click: special"
 	hint.position = Vector2(16, 44)
 	hint.add_theme_font_size_override("font_size", 15)
 	hint.modulate = Color(1, 1, 1, 0.7)
@@ -295,38 +383,66 @@ func _on_player_hit(damage: int) -> void:
 		_die()
 
 
-## Space: swing at every enemy within PLAYER_ATTACK_RANGE of the player's cell
-## (a cleave). Gated by a cooldown so it can't fire every frame.
+## Left-click: fire the gun down the aim line. The hit is decided now by the
+## hitscan (first enemy the laser reaches; walls block it), then a glowing bullet
+## travels out to it and applies the damage on arrival. Cooldown-gated.
 func _try_attack() -> void:
 	if _dead or _attack_cd > 0.0:
 		return
+	var dir := _aim_dir()
+	if dir == Vector2.ZERO:
+		return
 	_attack_cd = PLAYER_ATTACK_COOLDOWN
-	_show_swing()
-	var cells: Array[Vector2i] = []
-	for enemy in _enemies:
-		cells.append(enemy.cell())
-	for i in Combat.targets_in_range(_player_cell, cells, PLAYER_ATTACK_RANGE):
-		_enemies[i].take_damage(PLAYER_ATTACK_DAMAGE)
+	var muzzle_xz := _muzzle()
+	var from := Vector3(muzzle_xz.x, LASER_Y, muzzle_xz.y)
+	var dir3 := Vector3(dir.x, 0.0, dir.y)
+	var hit := Laser.cast(_world, _enemy_positions(), muzzle_xz, dir, LASER_RANGE)
+	var hit_enemy: int = hit["enemy"]
+	var target: Enemy = _enemies[hit_enemy] if hit_enemy >= 0 else null
+	_show_muzzle_flash(from)
+	_spawn_bullet(from, dir3, hit["distance"], target)
 
 
-## A translucent ring that briefly expands and fades at the player's feet.
-func _show_swing() -> void:
-	var ring := MeshInstance3D.new()
-	var mesh := TorusMesh.new()
-	mesh.inner_radius = 0.5
-	mesh.outer_radius = 0.7
-	ring.mesh = mesh
-	var mat := _flat_material(Color(1, 1, 1, 0.6))
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	ring.material_override = mat
-	ring.position = _player.position + Vector3.UP * 0.1
-	add_child(ring)
+## Spawns the projectile. Live: it travels `dist` and damages `target` on arrival
+## (re-checked valid, since it may have died meanwhile). Screenshot: a static
+## glowing bullet placed mid-flight, with the damage applied immediately so the
+## deterministic frame shows the hit enemy's depleted bar.
+func _spawn_bullet(from: Vector3, dir3: Vector3, dist: float, target: Enemy) -> void:
+	var bullet := Bullet.new()
+	add_child(bullet)
 	if _screenshot_mode:
-		return  # leave it static so the deterministic frame captures the swing
-	var tween := create_tween().set_parallel()
-	tween.tween_property(ring, "scale", Vector3.ONE * 1.6, 0.3)
-	tween.tween_property(mat, "albedo_color:a", 0.0, 0.3)
-	tween.chain().tween_callback(ring.queue_free)
+		if target != null:
+			target.take_damage(PLAYER_ATTACK_DAMAGE)
+		bullet.setup(from + dir3 * dist * 0.6, dir3, 0.0, false, Callable())
+		return
+	var on_hit := func() -> void:
+		if is_instance_valid(target):
+			target.take_damage(PLAYER_ATTACK_DAMAGE)
+	bullet.setup(from, dir3, dist, true, on_hit)
+
+
+## A brief yellow muzzle-flash glow at the gun, fading out (static for the shot).
+func _show_muzzle_flash(at: Vector3) -> void:
+	var flash := OmniLight3D.new()
+	flash.light_color = Color(1.0, 0.8, 0.3)
+	flash.light_energy = 4.0
+	flash.omni_range = 3.0
+	flash.position = at
+	add_child(flash)
+	if _screenshot_mode:
+		return  # leave it lit for the deterministic frame
+	var tween := create_tween()
+	tween.tween_property(flash, "light_energy", 0.0, 0.12)
+	tween.tween_callback(flash.queue_free)
+
+
+## Right-click: special attack — reserved. Wired to its own cooldown so the slot
+## is ready; the effect lands in a later pass.
+func _try_special() -> void:
+	if _dead or _special_cd > 0.0:
+		return
+	# TODO: special attack (e.g. charged/area shot aimed at the cursor).
+	pass
 
 
 ## Enemy reached 0 HP (Enemy.died signal): drop it from the roster and despawn.
@@ -355,9 +471,6 @@ func _respawn() -> void:
 	_health = MAX_HEALTH
 	_update_hp()
 	_status_label.visible = false
-	_path.clear()
-	_path_index = 0
-	_clear_markers()
 	_set_player_cell(PLAYER_START)
 	for enemy in _enemies:
 		enemy.reset()
@@ -398,27 +511,6 @@ func _face_toward(target: Vector3) -> void:
 	var flat := Vector3(target.x, _player.position.y, target.z)
 	if _player.position.distance_to(flat) > 0.001:
 		_player.look_at(flat, Vector3.UP)  # aims local -Z at the target
-
-
-# --- path visualisation ------------------------------------------------------
-
-func _show_path_markers() -> void:
-	_clear_markers()
-	var marker_mesh := PlaneMesh.new()
-	marker_mesh.size = Vector2(0.35, 0.35)
-	var marker_mat := _flat_material(Color(0.95, 0.85, 0.2))
-	# Skip index 0 (the cell the player is already on); mark the route ahead.
-	for i in range(1, _path.size()):
-		var marker := MeshInstance3D.new()
-		marker.mesh = marker_mesh
-		marker.material_override = marker_mat
-		marker.position = IsoGrid.grid_to_world(_path[i]) + Vector3.UP * 0.03
-		_markers.add_child(marker)
-
-
-func _clear_markers() -> void:
-	for child in _markers.get_children():
-		child.queue_free()
 
 
 func _flat_material(color: Color) -> StandardMaterial3D:

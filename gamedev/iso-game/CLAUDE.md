@@ -40,7 +40,8 @@ iso-game/
 ├── scripts/grid_world.gd    # grid state (blocked cells) + A* pathfinding (pure)
 ├── scripts/enemy_brain.gd   # pure enemy FSM (PATROL/CHASE/ATTACK/RETURN), tested
 ├── scripts/enemy.gd         # Enemy node: runs the FSM + executes each state; HP
-├── scripts/combat.gd        # pure melee targeting (player swing), tested
+├── scripts/laser.gd         # pure ray-march: laser-sight length + gun hitscan, tested
+├── scripts/bullet.gd        # glowing projectile node (cosmetic travel)
 ├── tests/test_*.gd          # headless SceneTree tests, exit 0/1
 ├── tools/run_tests.sh       # run all tests
 ├── tools/screenshot.sh      # deterministic frame capture
@@ -49,11 +50,26 @@ iso-game/
 
 ## Mechanics
 
-- **Click-to-move pathfinding.** Left-click a ground tile → `GridWorld.find_path`
-  runs A* (4-directional) from the player's cell and the player walks the route,
-  detouring around walls. Yellow markers show the planned path. Clicking a
-  blocked cell (a wall) is ignored. Obstacle layout is built in
-  `main.gd` `_build_obstacles`.
+- **Player movement (twin-stick).** Arrow keys move the player freely (continuous,
+  screen-relative via the camera basis, so diagonals give a full 8-way arc); the
+  player slides along walls/arena bounds by resolving each axis independently
+  (`main.gd` `_move_player`/`_is_walkable`, against `GridWorld` blocked cells).
+  The player **aims at the mouse** every frame (`_aim_at_mouse`), independent of
+  movement direction. (A* is no longer used for the player — only enemies path.)
+  Obstacle layout is built in `main.gd` `_build_obstacles`.
+
+- **Gun + laser sight.** A thin, semi-transparent red **laser** emits from the
+  muzzle (offset to the player's right, `GUN_OFFSET`) showing the aim line;
+  its length comes from `Laser.cast_distance` — a **pure ray-march**
+  (`scripts/laser.gd`, tested in `tests/test_laser.gd`) that stops at walls, the
+  arena edge, or an enemy. **Hold left-click for automatic fire** (polled in
+  `_process`, paced by `PLAYER_ATTACK_COOLDOWN`): `_try_attack` runs the same
+  `Laser.cast` **hitscan** to pick the first enemy hit, then spawns a glowing
+  **bullet** (`scripts/bullet.gd` — emissive sphere + travelling `OmniLight3D`)
+  that flies to the point and applies `PLAYER_ATTACK_DAMAGE` on arrival, plus a
+  muzzle-flash glow (`_show_muzzle_flash`). Right-click is a **reserved special**
+  (`_try_special`, cooldown wired, no effect yet). The laser is a separate node,
+  so firing never disturbs it.
 
 - **Enemy AI (finite state machine).** Enemies run an enum FSM
   (`scripts/enemy_brain.gd`, PATROL → CHASE → ATTACK → RETURN). Transitions are a
@@ -74,15 +90,10 @@ iso-game/
   `attack_interval`s via the `hit_player` signal. `main.gd` tracks player HP
   (HUD label + red hit-flash); at 0 HP it shows "YOU DIED" and `_respawn()`
   resets the player to `PLAYER_START` and sends every enemy home (`Enemy.reset`).
-- **Player combat (two-sided).** Press **Space** to swing: `main.gd` `_try_attack`
-  (cooldown-gated) calls `Combat.targets_in_range` — a **pure**, unit-tested
-  cleave-targeting function (`scripts/combat.gd`, tested in
-  `tests/test_combat.gd`) — and deals `PLAYER_ATTACK_DAMAGE` to every enemy
-  within `PLAYER_ATTACK_RANGE` cells. Enemies have HP (`max_health`,
-  `Enemy.take_damage`): a white emission flash on each hit, and at 0 HP they emit
-  `died`, which `main.gd` `_on_enemy_died` despawns. A translucent ring
-  (`_show_swing`) marks each swing. Killed enemies stay dead through a respawn
-  (seed for a future "clear all enemies" objective).
+- **Enemy HP / death.** Enemies have HP (`max_health`, `Enemy.take_damage`): a
+  white emission flash on each hit, and at 0 HP they emit `died`, which `main.gd`
+  `_on_enemy_died` despawns. Killed enemies stay dead through a respawn (seed for
+  a future "clear all enemies" objective).
   - **Enemy health bars:** a floating bar above each enemy (`Enemy._build_health_bar`)
     — dark backing + a left-anchored fill scaled by the HP fraction, coloured
     green→red as it drains. Shown only when damaged (hidden at full HP). The fixed
@@ -93,7 +104,7 @@ iso-game/
 
 - The player is **`assets/explorer.glb`** — a procedural low-poly explorer
   (CC0; see `assets/CREDITS.md`). Loaded in `main.gd` `_build_player` and turned
-  to face its movement direction (`_face_toward`). Tune size with `PLAYER_SCALE`;
+  to face the mouse cursor (`_face_toward`). Tune size with `PLAYER_SCALE`;
   swap models via `PLAYER_MODEL`. Asset workflow: `../BLENDER_MCP.md`.
 - It's a **static mesh** (not rigged) — placeholder until the game is further
   along. The animation hook is already wired: `_setup_animation` finds the
@@ -103,8 +114,10 @@ iso-game/
 
 ## Controls
 
-- **Left click** a ground tile → player routes there around any walls.
-- **Space** → swing at adjacent enemies (melee cleave).
+- **Arrow keys** → move (free 8-way, screen-relative; slides along walls).
+- **Mouse** → aim; the player and laser sight follow the cursor.
+- **Left-click (hold)** → automatic gun fire down the aim line.
+- **Right-click** → special attack (reserved; no effect yet).
 
 ## Conventions
 

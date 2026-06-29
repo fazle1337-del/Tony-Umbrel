@@ -144,11 +144,6 @@ func _attack(delta: float) -> void:
 		hit_player.emit(attack_damage)
 
 
-## The enemy's current grid cell — used by the player's melee targeting.
-func cell() -> Vector2i:
-	return _cell
-
-
 ## Applies a player hit. Flashes white; emits `died` (once) at 0 HP so main.gd
 ## can despawn it. No-op once already dead.
 func take_damage(amount: int) -> void:
