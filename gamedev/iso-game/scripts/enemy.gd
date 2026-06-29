@@ -19,12 +19,14 @@ const EnemyBrain := preload("res://scripts/enemy_brain.gd")
 @export var attack_damage := 10   # HP dealt per hit while in ATTACK
 @export var attack_interval := 1.0  # seconds between hits
 @export var max_health := 30       # HP; the player's swing deals ~15 (2 hits)
+@export var size := 1.0            # body scale (enemy types differ in size)
 
 signal hit_player(damage: int)
 signal died(enemy: Enemy)         # emitted once when HP reaches 0
 
 const ARRIVE := 0.05         # distance at which a step is "reached"
 const BODY_Y := 0.5          # half body height; sits the capsule on the ground
+const THINK_INTERVAL := 0.2  # seconds between FSM/path replans (throttle for crowds)
 const BAR_Y := 0.95          # health-bar height above the body origin
 const BAR_W := 0.8           # health-bar width (world units)
 const BAR_H := 0.12          # health-bar height (world units)
@@ -41,6 +43,14 @@ var _route_index := 0
 var _route_dir := 1                # ping-pong direction along the route
 var _attack_cd := 0.0              # seconds until the next hit lands
 var _health: int
+# Throttled AI: the FSM inputs and A* path are recomputed every THINK_INTERVAL and
+# cached; movement still runs every frame along the cached path.
+var _think_cd := 0.0
+var _pcell: Vector2i              # cached player cell
+var _can_see := false             # cached line-of-sight to the player
+var _reachable := false           # cached A* reachability to the player
+var _path: Array[Vector2i] = []   # cached route the enemy is walking
+var _path_goal: Vector2i          # the goal _path was computed for
 var _mesh: MeshInstance3D
 var _bar: Node3D                   # health-bar container (faces the fixed camera)
 var _bar_pivot: Node3D            # left-anchored; scale.x = health fraction
@@ -61,26 +71,32 @@ func setup(world: GridWorld, player: Node3D, home: Vector2i,
 	_rng.seed = rng_seed
 	_build_mesh()
 	_build_health_bar()
+	scale = Vector3.ONE * size
 	position = _cell_pos(_cell)
 	_apply_state_color()
+	_think()
+	_think_cd = _rng.randf() * THINK_INTERVAL   # stagger so crowds don't replan in lockstep
 
 
 func _physics_process(delta: float) -> void:
 	if _world == null:
 		return
-	var pcell := IsoGrid.world_to_grid(_player.position)
-	var can_see := _world.has_line_of_sight(_cell, pcell)
-	var reachable := not _world.find_path(_cell, pcell).is_empty()
-	var new_state := _brain.next_state(_state, _cell, pcell, _home, can_see, reachable)
+	_think_cd -= delta
+	if _think_cd <= 0.0:
+		_think()
+		_think_cd = THINK_INTERVAL
+
+	var new_state := _brain.next_state(_state, _cell, _pcell, _home, _can_see, _reachable)
 	if new_state != _state:
 		_state = new_state
 		if _state == EnemyBrain.State.ATTACK:
 			_attack_cd = 0.0          # first hit lands immediately on entering ATTACK
 		_apply_state_color()
+		_path.clear()                 # goal changed -> drop the cached route
 
 	match _state:
 		EnemyBrain.State.CHASE:
-			_step_toward(pcell, chase_speed, delta)
+			_step_toward(_pcell, chase_speed, delta)
 		EnemyBrain.State.RETURN:
 			_step_toward(_home, chase_speed, delta)
 		EnemyBrain.State.ATTACK:
@@ -91,9 +107,27 @@ func _physics_process(delta: float) -> void:
 	_orient_health_bar()
 
 
-## Advances one A* step toward `goal`, updating _cell on arrival at the next cell.
+## Recomputes the FSM inputs (player cell, line-of-sight, A* reachability). Called
+## every THINK_INTERVAL, not every frame — A* is the costly part with many enemies.
+func _think() -> void:
+	_pcell = IsoGrid.world_to_grid(_player.position)
+	_can_see = _world.has_line_of_sight(_cell, _pcell)
+	_reachable = not _world.find_path(_cell, _pcell).is_empty()
+
+
+## Cached A* route to `goal`: reused while the goal holds and the route still has a
+## step left, recomputed otherwise (so it follows a moving target on replans).
+func _path_to(goal: Vector2i) -> Array[Vector2i]:
+	if goal != _path_goal or _path.size() < 2:
+		_path = _world.find_path(_cell, goal)
+		_path_goal = goal
+	return _path
+
+
+## Advances one step along the cached route toward `goal`, consuming a cell on
+## arrival so the cache stays valid as the enemy walks without re-running A*.
 func _step_toward(goal: Vector2i, speed: float, delta: float) -> void:
-	var path := _world.find_path(_cell, goal)
+	var path := _path_to(goal)
 	if path.size() < 2:
 		return  # already there / no route
 	var tpos := _cell_pos(path[1])
@@ -101,6 +135,7 @@ func _step_toward(goal: Vector2i, speed: float, delta: float) -> void:
 	_face(tpos)
 	if position.distance_to(tpos) < ARRIVE:
 		_cell = path[1]
+		_path.remove_at(0)            # drop the cell we just left; path[0] is now _cell
 
 
 ## PATROL: follow the assigned route (A*-routing between waypoints, ping-pong at
@@ -235,6 +270,8 @@ func reset() -> void:
 	_attack_cd = 0.0
 	_health = max_health
 	_state = EnemyBrain.State.PATROL
+	_path.clear()
+	_think_cd = 0.0               # re-think next frame
 	position = _cell_pos(_cell)
 	_apply_state_color()
 	_refresh_health_bar()
@@ -247,7 +284,7 @@ func _face(world_pos: Vector3) -> void:
 
 
 func _cell_pos(cell: Vector2i) -> Vector3:
-	return IsoGrid.grid_to_world(cell) + Vector3.UP * BODY_Y
+	return IsoGrid.grid_to_world(cell) + Vector3.UP * (BODY_Y * size)  # feet on ground when scaled
 
 
 func _build_mesh() -> void:

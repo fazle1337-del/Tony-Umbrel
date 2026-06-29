@@ -16,6 +16,8 @@ const Laser := preload("res://scripts/laser.gd")
 const Bullet := preload("res://scripts/bullet.gd")
 const PlayerStats := preload("res://scripts/player_stats.gd")
 const Weapon := preload("res://scripts/weapon.gd")
+const SpawnDirector := preload("res://scripts/spawn_director.gd")
+const EnemyTypes := preload("res://scripts/enemy_types.gd")
 
 const GRID_RADIUS := 6          # grid spans -RADIUS..RADIUS on both axes
 const PLAYER_Y := 0.0           # player rig origin is at the feet, on the ground
@@ -25,6 +27,7 @@ const SEED := 12345             # fixed so runs are reproducible
 const SCREENSHOT_FRAMES := 20   # frames to settle before capturing
 const SCREENSHOT_PATH := "res://screenshots/latest.png"
 const PLAYER_START := Vector2i(0, 0)  # spawn / respawn cell
+const MAX_ENEMIES := 40            # concurrent enemy cap (perf + readability)
 # Gun stats live on the Weapon (range/damage/cooldown/...); these are visual-only.
 const LASER_WIDTH := 0.02          # beam thickness
 const LASER_Y := 0.55              # emit height (roughly chest level)
@@ -40,6 +43,8 @@ var _anim: AnimationPlayer   # the model's animation player (Walk/Idle/...)
 var _walk_anim := ""
 var _idle_anim := ""
 var _enemies: Array[Enemy] = []
+var _spawn_rng := RandomNumberGenerator.new()   # enemy placement (separate from the director's)
+var _spawn_seq := 0                              # per-enemy seed counter
 var _stats := PlayerStats.new()
 var _weapon := Weapon.new()   # default = pistol
 var _health: int
@@ -67,9 +72,8 @@ func _ready() -> void:
 	_build_hud()
 
 	if _screenshot_mode:
-		# Stand a few cells from enemy 0 (home -3,1) in the open and shoot it:
-		# the shot shows the offset laser sight, the yellow tracer, and the
-		# enemy's depleted health bar where the beam lands.
+		# Stand a few cells from the grunt (at -3,1) in the open and shoot it; the
+		# staged crowd (grunt/fast/tank) also shows the per-type size variety.
 		_set_player_cell(Vector2i(-3, 4))
 		_face_toward(IsoGrid.grid_to_world(Vector2i(-3, 1)))  # down the open column
 		_try_attack()
@@ -307,32 +311,56 @@ func _build_player() -> void:
 	_setup_animation(model)
 
 
-## Spawns enemies from a per-enemy config table (tunable ranges/speeds + patrol
-## routes). One starts near the player (chases on the screenshot); one patrols a
-## route far away.
+## Live: a SpawnDirector streams escalating enemies from the arena edges.
+## Screenshot: a fixed deterministic crowd (one of each type) so the frame is
+## reproducible and shows the size variety.
 func _build_enemies() -> void:
-	var configs := [
-		{
-			"home": Vector2i(-3, 1),
-			"route": [Vector2i(-3, 1), Vector2i(-3, -3)] as Array[Vector2i],
-			"detect": 5, "chase": 3.2,
-		},
-		{
-			"home": Vector2i(4, -3),
-			"route": [Vector2i(4, -3), Vector2i(4, 4), Vector2i(-1, 4)] as Array[Vector2i],
-			"detect": 6, "chase": 2.6,
-		},
-	]
-	for i in configs.size():
-		var cfg: Dictionary = configs[i]
-		var enemy := Enemy.new()
-		enemy.detect_range = cfg["detect"]
-		enemy.chase_speed = cfg["chase"]
-		enemy.hit_player.connect(_on_player_hit)
-		enemy.died.connect(_on_enemy_died)
-		add_child(enemy)
-		enemy.setup(_world, _player, cfg["home"], cfg["route"], SEED + i + 1)
-		_enemies.append(enemy)
+	_spawn_rng.seed = SEED
+	if _screenshot_mode:
+		_spawn_enemy(&"grunt", Vector2i(-3, 1))
+		_spawn_enemy(&"fast", Vector2i(2, -3))
+		_spawn_enemy(&"tank", Vector2i(4, 3))
+		return
+	var spawner := SpawnDirector.new(SEED)
+	spawner.spawn.connect(_on_spawn)
+	add_child(spawner)
+
+
+## Director asked for an enemy: place it at a free arena-edge cell, honoring the cap.
+func _on_spawn(type: StringName) -> void:
+	if _enemies.size() >= MAX_ENEMIES:
+		return
+	_spawn_enemy(type, _random_edge_cell())
+
+
+## Builds one enemy of `type` at `home`, wired to the HP/death signals.
+func _spawn_enemy(type: StringName, home: Vector2i) -> void:
+	var preset: Dictionary = EnemyTypes.PRESETS[type]
+	var enemy := Enemy.new()
+	enemy.max_health = preset["health"]
+	enemy.chase_speed = preset["chase"]
+	enemy.patrol_speed = preset["patrol"]
+	enemy.attack_damage = preset["damage"]
+	enemy.detect_range = preset["detect"]
+	enemy.size = preset["size"]
+	enemy.hit_player.connect(_on_player_hit)
+	enemy.died.connect(_on_enemy_died)
+	add_child(enemy)
+	# No patrol route -> spawned enemies wander until they detect the player.
+	enemy.setup(_world, _player, home, [] as Array[Vector2i], SEED + _spawn_seq)
+	_spawn_seq += 1
+	_enemies.append(enemy)
+
+
+## A random non-blocked cell on the arena border (where enemies stream in from).
+func _random_edge_cell() -> Vector2i:
+	for _attempt in 20:
+		var along := _spawn_rng.randi_range(-GRID_RADIUS, GRID_RADIUS)
+		var edge := GRID_RADIUS if _spawn_rng.randf() < 0.5 else -GRID_RADIUS
+		var cell := Vector2i(along, edge) if _spawn_rng.randf() < 0.5 else Vector2i(edge, along)
+		if not _world.is_blocked(cell):
+			return cell
+	return Vector2i(GRID_RADIUS, GRID_RADIUS)
 
 
 # --- HUD + player health -----------------------------------------------------

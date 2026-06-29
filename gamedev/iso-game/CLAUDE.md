@@ -42,6 +42,11 @@ iso-game/
 ├── scripts/enemy.gd         # Enemy node: runs the FSM + executes each state; HP
 ├── scripts/laser.gd         # pure ray-march: laser-sight length + gun hitscan, tested
 ├── scripts/bullet.gd        # glowing projectile node (cosmetic travel)
+├── scripts/player_stats.gd  # central player stats (upgrades land here), tested
+├── scripts/weapon.gd        # weapon data + pure fire_pattern (multishot/spread), tested
+├── scripts/spawn_schedule.gd# pure spawn interval + type curve, tested
+├── scripts/spawn_director.gd# node: streams enemies off the schedule
+├── scripts/enemy_types.gd   # enemy stat/size presets (grunt/fast/tank)
 ├── tests/test_*.gd          # headless SceneTree tests, exit 0/1
 ├── tools/run_tests.sh       # run all tests
 ├── tools/screenshot.sh      # deterministic frame capture
@@ -76,16 +81,26 @@ iso-game/
   **pure function** of the enemy/player cells + line-of-sight + A*-reachability
   (unit tested in `tests/test_enemy_brain.gd`); `scripts/enemy.gd` executes the
   current state. Tinted by state for at-a-glance verification: **grey** patrol,
-  **orange** chase, **red** attack, **blue** return. Spawned via a per-enemy
-  config table in `main.gd` `_build_enemies`. Concept adapted from the kidscancode
-  "changing behaviors" recipe. Features:
+  **orange** chase, **red** attack, **blue** return. Concept adapted from the
+  kidscancode "changing behaviors" recipe. Features:
   - **Line of sight:** detection needs a clear line (`GridWorld.has_line_of_sight`,
     Bresenham — walls block vision); a started chase persists around corners via
     A* until the player is out of range/unreachable.
   - **Tunable per enemy:** `@export` `detect_range`/`lose_range`/`attack_range`/
-    `chase_speed`/`patrol_speed` (set in the spawn table or the inspector).
+    `chase_speed`/`patrol_speed`/`max_health`/`size` (set per type or the inspector).
+  - **Throttled pathfinding:** the FSM inputs and A* route are recomputed every
+    `THINK_INTERVAL` (~0.2s, staggered per enemy) and cached; movement runs every
+    frame along the cached route. Keeps a crowd cheap (was A* twice per frame).
   - **Patrol routes:** a waypoint list cycled ping-pong (A*-routed between
-    waypoints); falls back to random wander if no route is given.
+    waypoints); falls back to random wander if no route is given (spawned enemies
+    get no route → wander until they detect the player).
+- **Spawning (survivors-like).** A `SpawnDirector` (`scripts/spawn_director.gd`)
+  streams enemies from the arena edges on an escalating curve — `SpawnSchedule`
+  (`scripts/spawn_schedule.gd`, pure + tested) gives the spawn interval and a
+  time-weighted enemy type. Types are stat/size presets (`scripts/enemy_types.gd`:
+  grunt / fast / tank). `main.gd` `_spawn_enemy`/`_on_spawn` place them (free edge
+  cell, `MAX_ENEMIES` cap). Seeded RNG → reproducible. In screenshot mode the
+  director is skipped and a fixed crowd is staged instead.
 - **Combat / health.** Enemies in ATTACK deal `attack_damage` every
   `attack_interval`s via the `hit_player` signal. `main.gd` tracks player HP
   (HUD label + red hit-flash); at 0 HP it shows "YOU DIED" and `_respawn()`
