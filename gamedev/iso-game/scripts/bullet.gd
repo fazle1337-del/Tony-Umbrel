@@ -1,29 +1,28 @@
 class_name Bullet
 extends Node3D
 ## A visible gun projectile: a glowing yellow sphere that carries its own light so
-## it lights the world as it travels. Purely cosmetic — the hit is decided up
-## front by the hitscan (Laser.cast) and applied via `on_hit` when the bullet
-## reaches the precomputed distance. Independent of the laser sight (its own node)
-## so firing never disturbs the beam.
+## it lights the world as it travels. Purely cosmetic — the hits are decided up
+## front by the hitscan (Laser.cast_pierce) and damage is applied at fire time;
+## the bullet just travels to where the shot ended (wall / last enemy / range).
+## Independent of the laser sight (its own node) so firing never disturbs the beam.
 
-const SPEED := 36.4          # world units/second (26 + 40%)
 const RADIUS := 0.09
 
 var _dir: Vector3            # unit travel direction (flat)
 var _remaining: float        # world units left before it arrives
+var _speed: float            # travel speed (from the weapon)
 var _moving := true
-var _on_hit: Callable        # called once on arrival (may be unset)
 
 
-## `from` muzzle position, `dir` unit aim, `distance` to the hit point. When
-## `moving` is false the bullet sits at `from` (used for the deterministic
-## screenshot). `on_hit` fires when it arrives.
-func setup(from: Vector3, dir: Vector3, distance: float, moving: bool, on_hit: Callable) -> void:
+## `from` muzzle position, `dir` unit aim, `distance` to the end of the shot,
+## `speed` world units/s. When `moving` is false the bullet sits at `from` (the
+## deterministic screenshot).
+func setup(from: Vector3, dir: Vector3, distance: float, moving: bool, speed: float) -> void:
 	position = from
 	_dir = dir
 	_remaining = distance
 	_moving = moving
-	_on_hit = on_hit
+	_speed = speed
 	_build()
 
 
@@ -52,11 +51,9 @@ func _build() -> void:
 func _process(delta: float) -> void:
 	if not _moving:
 		return
-	var step := SPEED * delta
+	var step := _speed * delta
 	if step >= _remaining:
 		position += _dir * _remaining
-		if _on_hit.is_valid():
-			_on_hit.call()
 		queue_free()
 		return
 	position += _dir * step

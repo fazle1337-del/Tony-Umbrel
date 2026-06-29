@@ -15,6 +15,7 @@ const Enemy := preload("res://scripts/enemy.gd")
 const Laser := preload("res://scripts/laser.gd")
 const Bullet := preload("res://scripts/bullet.gd")
 const PlayerStats := preload("res://scripts/player_stats.gd")
+const Weapon := preload("res://scripts/weapon.gd")
 
 const GRID_RADIUS := 6          # grid spans -RADIUS..RADIUS on both axes
 const PLAYER_Y := 0.0           # player rig origin is at the feet, on the ground
@@ -24,10 +25,7 @@ const SEED := 12345             # fixed so runs are reproducible
 const SCREENSHOT_FRAMES := 20   # frames to settle before capturing
 const SCREENSHOT_PATH := "res://screenshots/latest.png"
 const PLAYER_START := Vector2i(0, 0)  # spawn / respawn cell
-# Gun base values; PlayerStats multipliers (damage_mult/fire_rate_mult) scale them.
-const PLAYER_ATTACK_DAMAGE := 15   # HP per shot (enemy max_health 30 -> 2 shots)
-const PLAYER_ATTACK_COOLDOWN := 0.4  # seconds between shots (fire rate)
-const LASER_RANGE := 14.0          # max beam / shot range (world units)
+# Gun stats live on the Weapon (range/damage/cooldown/...); these are visual-only.
 const LASER_WIDTH := 0.02          # beam thickness
 const LASER_Y := 0.55              # emit height (roughly chest level)
 const GUN_OFFSET := 0.22           # muzzle offset to the player's right
@@ -43,6 +41,7 @@ var _walk_anim := ""
 var _idle_anim := ""
 var _enemies: Array[Enemy] = []
 var _stats := PlayerStats.new()
+var _weapon := Weapon.new()   # default = pistol
 var _health: int
 var _attack_cd := 0.0
 var _special_cd := 0.0
@@ -177,7 +176,7 @@ func _update_laser() -> void:
 	if dir == Vector2.ZERO:
 		_laser.visible = false
 		return
-	var dist := Laser.cast_distance(_world, _enemy_positions(), _muzzle(), dir, LASER_RANGE)
+	var dist := Laser.cast_distance(_world, _enemy_positions(), _muzzle(), dir, _weapon.max_range)
 	_laser.visible = true
 	_laser_mesh.size = Vector3(LASER_WIDTH, LASER_WIDTH, dist)
 	# Offset right (the muzzle) and centered along the rig's local -Z (forward).
@@ -385,42 +384,44 @@ func _on_player_hit(damage: int) -> void:
 		_die()
 
 
-## Left-click: fire the gun down the aim line. The hit is decided now by the
-## hitscan (first enemy the laser reaches; walls block it), then a glowing bullet
-## travels out to it and applies the damage on arrival. Cooldown-gated.
+## Left-click: fire the equipped weapon. Each pellet of the fire pattern is its
+## own hitscan (Laser.cast_pierce — walls block it, pierce passes through enemies),
+## damage applied now, then a glowing bullet travels out to where the shot ended.
 func _try_attack() -> void:
 	if _dead or _attack_cd > 0.0:
 		return
-	var dir := _aim_dir()
-	if dir == Vector2.ZERO:
+	var aim := _aim_dir()
+	if aim == Vector2.ZERO:
 		return
-	_attack_cd = _stats.cooldown_for(PLAYER_ATTACK_COOLDOWN)
+	_attack_cd = _stats.cooldown_for(_weapon.cooldown)
 	var muzzle_xz := _muzzle()
 	var from := Vector3(muzzle_xz.x, LASER_Y, muzzle_xz.y)
-	var dir3 := Vector3(dir.x, 0.0, dir.y)
-	var hit := Laser.cast(_world, _enemy_positions(), muzzle_xz, dir, LASER_RANGE)
-	var hit_enemy: int = hit["enemy"]
-	var target: Enemy = _enemies[hit_enemy] if hit_enemy >= 0 else null
+	var dmg := _stats.damage_for(_weapon.damage)
 	_show_muzzle_flash(from)
-	_spawn_bullet(from, dir3, hit["distance"], target, _stats.damage_for(PLAYER_ATTACK_DAMAGE))
+	for pellet in _weapon.fire_pattern(aim):
+		_fire_pellet(from, muzzle_xz, pellet, dmg)
 
 
-## Spawns the projectile. Live: it travels `dist` and damages `target` on arrival
-## (re-checked valid, since it may have died meanwhile). Screenshot: a static
-## glowing bullet placed mid-flight, with the damage applied immediately so the
-## deterministic frame shows the hit enemy's depleted bar.
-func _spawn_bullet(from: Vector3, dir3: Vector3, dist: float, target: Enemy, dmg: int) -> void:
+## One pellet: hitscan along `dir`, damage every enemy it hits (up to pierce+1),
+## then spawn the cosmetic bullet out to the shot's end distance.
+func _fire_pellet(from: Vector3, muzzle_xz: Vector2, dir: Vector2, dmg: int) -> void:
+	var hit := Laser.cast_pierce(_world, _enemy_positions(), muzzle_xz, dir,
+			_weapon.max_range, _weapon.pierce + 1)
+	for i in hit["enemies"]:
+		_enemies[i].take_damage(dmg)
+	var dir3 := Vector3(dir.x, 0.0, dir.y)
+	_spawn_bullet(from, dir3, hit["distance"])
+
+
+## Spawns the cosmetic projectile travelling `dist` at the weapon's speed. In
+## screenshot mode it's placed static mid-flight for the deterministic frame.
+func _spawn_bullet(from: Vector3, dir3: Vector3, dist: float) -> void:
 	var bullet := Bullet.new()
 	add_child(bullet)
 	if _screenshot_mode:
-		if target != null:
-			target.take_damage(dmg)
-		bullet.setup(from + dir3 * dist * 0.6, dir3, 0.0, false, Callable())
-		return
-	var on_hit := func() -> void:
-		if is_instance_valid(target):
-			target.take_damage(dmg)
-	bullet.setup(from, dir3, dist, true, on_hit)
+		bullet.setup(from + dir3 * dist * 0.6, dir3, 0.0, false, _weapon.proj_speed)
+	else:
+		bullet.setup(from, dir3, dist, true, _weapon.proj_speed)
 
 
 ## A brief yellow muzzle-flash glow at the gun, fading out (static for the shot).

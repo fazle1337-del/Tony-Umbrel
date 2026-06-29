@@ -36,3 +36,28 @@ static func cast(world: GridWorld, enemies: Array[Vector2],
 static func cast_distance(world: GridWorld, enemies: Array[Vector2],
 		origin: Vector2, dir: Vector2, max_range: float) -> float:
 	return cast(world, enemies, origin, dir, max_range)["distance"]
+
+
+## Like cast(), but for a piercing shot: collects up to `max_hits` enemies (in
+## order along the ray, each counted once) before stopping. Stops early at a wall
+## or the arena edge. Returns {distance, enemies}: `distance` is where the bullet
+## ends (the wall, the last enemy it could hit, or max_range), `enemies` the list
+## of hit indices. `max_hits` = weapon.pierce + 1.
+static func cast_pierce(world: GridWorld, enemies: Array[Vector2],
+		origin: Vector2, dir: Vector2, max_range: float, max_hits: int) -> Dictionary:
+	var hits: Array[int] = []
+	var seen := {}
+	var t := STEP
+	while t <= max_range:
+		var p := origin + dir * t
+		var cell := IsoGrid.world_to_grid(Vector3(p.x, 0.0, p.y))
+		if not world.is_in_bounds(cell) or world.is_blocked(cell):
+			return {"distance": t, "enemies": hits}
+		for i in enemies.size():
+			if not seen.has(i) and p.distance_to(enemies[i]) <= ENEMY_RADIUS:
+				seen[i] = true
+				hits.append(i)
+				if hits.size() >= max_hits:
+					return {"distance": t, "enemies": hits}
+		t += STEP
+	return {"distance": max_range, "enemies": hits}
