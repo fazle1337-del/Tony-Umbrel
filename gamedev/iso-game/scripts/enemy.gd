@@ -19,13 +19,14 @@ const EnemyBrain := preload("res://scripts/enemy_brain.gd")
 @export var attack_damage := 10   # HP dealt per hit while in ATTACK
 @export var attack_interval := 1.0  # seconds between hits
 @export var max_health := 30       # HP; the player's swing deals ~15 (2 hits)
-@export var size := 1.0            # body scale (enemy types differ in size)
+@export var size := 1.0            # uniform body scale (enemy types differ in size)
+@export var body_radius := 0.28    # capsule radius (per type, before `size` scale)
+@export var body_height := 1.0     # capsule height (per type, before `size` scale)
 
 signal hit_player(damage: int)
 signal died(enemy: Enemy)         # emitted once when HP reaches 0
 
 const ARRIVE := 0.05         # distance at which a step is "reached"
-const BODY_Y := 0.5          # half body height; sits the capsule on the ground
 const THINK_INTERVAL := 0.2  # seconds between FSM/path replans (throttle for crowds)
 const BAR_Y := 0.95          # health-bar height above the body origin
 const BAR_W := 0.8           # health-bar width (world units)
@@ -284,14 +285,15 @@ func _face(world_pos: Vector3) -> void:
 
 
 func _cell_pos(cell: Vector2i) -> Vector3:
-	return IsoGrid.grid_to_world(cell) + Vector3.UP * (BODY_Y * size)  # feet on ground when scaled
+	# Lift by half the (scaled) body height so the capsule's feet rest on the ground.
+	return IsoGrid.grid_to_world(cell) + Vector3.UP * (body_height * 0.5 * size)
 
 
 func _build_mesh() -> void:
 	_mesh = MeshInstance3D.new()
 	var body := CapsuleMesh.new()
-	body.radius = 0.28
-	body.height = 1.0
+	body.radius = body_radius
+	body.height = maxf(body_height, body_radius * 2.0)   # capsule height must clear the caps
 	_mesh.mesh = body
 	var mat := StandardMaterial3D.new()
 	mat.emission_enabled = true              # white hit-flash overlays the tint

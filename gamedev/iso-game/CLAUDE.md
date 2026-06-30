@@ -48,8 +48,10 @@ iso-game/
 ├── scripts/spawn_director.gd# node: streams enemies off the schedule
 ├── scripts/enemy_types.gd   # enemy stat/size/xp presets (grunt/fast/tank)
 ├── scripts/progression.gd   # pure XP curve: level<->total<->bar fill, tested
-├── scripts/pickup.gd        # XP-gem node (cosmetic; main does the collection)
+├── scripts/pickup.gd        # gem/heart pickup node (cosmetic; main collects)
 ├── scripts/upgrades.gd      # pure pick-a-card pool + roll_choices/apply, tested
+├── scripts/drops.gd         # pure heart drop-chance, tested
+├── scripts/run_summary.gd   # pure M:SS time format + death summary, tested
 ├── tests/test_*.gd          # headless SceneTree tests, exit 0/1
 ├── tools/run_tests.sh       # run all tests
 ├── tools/screenshot.sh      # deterministic frame capture
@@ -100,19 +102,22 @@ iso-game/
 - **Spawning (survivors-like).** A `SpawnDirector` (`scripts/spawn_director.gd`)
   streams enemies from the arena edges on an escalating curve — `SpawnSchedule`
   (`scripts/spawn_schedule.gd`, pure + tested) gives the spawn interval and a
-  time-weighted enemy type. Types are stat/size presets (`scripts/enemy_types.gd`:
-  grunt / fast / tank). `main.gd` `_spawn_enemy`/`_on_spawn` place them (free edge
+  time-weighted enemy type. Types are stat/size/shape presets
+  (`scripts/enemy_types.gd`: grunt / fast / tank) — `size` plus per-type capsule
+  `radius`/`height` give distinct silhouettes (slim fast, bulky tank) on top of
+  the state colour tint. `main.gd` `_spawn_enemy`/`_on_spawn` place them (free edge
   cell, `MAX_ENEMIES` cap). Seeded RNG → reproducible. In screenshot mode the
   director is skipped and a fixed crowd is staged instead.
 - **XP & levels (survivors-like).** Each enemy drops an XP **gem** where it dies
   (`scripts/pickup.gd`; value by type — `EnemyTypes.PRESETS[*].xp`, tougher worth
-  more). The player **vacuums** gems within `_stats.pickup_radius`
-  (`main.gd` `_collect_pickups`), accruing `_xp`. The level curve is pure +
+  more), and may also drop a red **heart** (`scripts/drops.gd` `drops_heart`,
+  ~12% chance, own seeded `_drop_rng`) that restores HP. The player **vacuums**
+  pickups within `_stats.pickup_radius` (`main.gd` `_collect_pickups` — gems grant
+  XP, hearts heal), accruing `_xp`. The level curve is pure +
   tested (`scripts/progression.gd`, `tests/test_progression.gd`): `xp_span(level)`
   is the bar's width, `level_for_total`/`xp_into_level` drive the HUD XP bar +
-  "Lv N" label by the HP. Crossing a boundary calls `_on_level_up` — a hook that
-  Step 5 (pick-a-card) will fill in. In screenshot mode a couple of gems and a
-  partway bar are staged deterministically.
+  "Lv N" label by the HP. Crossing a boundary calls `_on_level_up` (the pick-a-card
+  screen, below).
 - **Level-up upgrades (pick-a-card).** Crossing a level boundary calls
   `main.gd` `_on_level_up`, which **pauses the tree** (`get_tree().paused = true`)
   and shows a card overlay. The cards are pure data + a seeded roller
@@ -127,12 +132,17 @@ iso-game/
   don't desync spawning. Screenshot mode stages the overlay over the dimmed scene.
 - **Combat / health.** Enemies in ATTACK deal `attack_damage` every
   `attack_interval`s via the `hit_player` signal. `main.gd` tracks player HP
-  (HUD label + red hit-flash); at 0 HP it shows "YOU DIED" and `_respawn()`
-  resets the player to `PLAYER_START` and sends every enemy home (`Enemy.reset`).
+  (HUD label + red hit-flash). A top-right HUD readout shows the run time + kill
+  count (`RunSummary.format_time`).
+- **Run loop / death.** At 0 HP `_die()` ends the run: it **pauses the tree** and
+  shows a run-summary overlay (`_build_death_ui`) — "YOU DIED" + level / time /
+  kills (`scripts/run_summary.gd`, tested) — with a **Restart run** button that
+  `reload_current_scene()`s a fresh (same-SEED, reproducible) run. The overlay is
+  `PROCESS_MODE_WHEN_PAUSED` like the card screen; the button grabs focus so
+  Enter/Space restart too. (Old in-place `_respawn` is gone.)
 - **Enemy HP / death.** Enemies have HP (`max_health`, `Enemy.take_damage`): a
   white emission flash on each hit, and at 0 HP they emit `died`, which `main.gd`
-  `_on_enemy_died` despawns. Killed enemies stay dead through a respawn (seed for
-  a future "clear all enemies" objective).
+  `_on_enemy_died` tallies (kills, gem + maybe heart drop) and despawns.
   - **Enemy health bars:** a floating bar above each enemy (`Enemy._build_health_bar`)
     — dark backing + a left-anchored fill scaled by the HP fraction, coloured
     green→red as it drains. Shown only when damaged (hidden at full HP). The fixed

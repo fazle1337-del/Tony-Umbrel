@@ -1,5 +1,9 @@
 # Iso Game — survivors-like roadmap
 
+> **Status:** Steps 1–6 complete. The core survivors-like loop is in — XP gems,
+> levels, pick-a-card upgrades, heart drops, and a run-summary/restart on death.
+> Future work would build on this (more weapons/cards, objectives, tuning).
+
 Turning the twin-stick shooter into an **endless survival** game with
 **pick-a-card** level-ups. Each step is one commit and stays in the autonomy
 loop (pure logic + headless tests, visuals via `tools/screenshot.sh`).

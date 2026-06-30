@@ -21,6 +21,8 @@ const EnemyTypes := preload("res://scripts/enemy_types.gd")
 const Pickup := preload("res://scripts/pickup.gd")
 const Progression := preload("res://scripts/progression.gd")
 const Upgrades := preload("res://scripts/upgrades.gd")
+const Drops := preload("res://scripts/drops.gd")
+const RunSummary := preload("res://scripts/run_summary.gd")
 
 const GRID_RADIUS := 6          # grid spans -RADIUS..RADIUS on both axes
 const PLAYER_Y := 0.0           # player rig origin is at the feet, on the ground
@@ -29,7 +31,6 @@ const PLAYER_SCALE := 0.5       # tuned so the model is ~1 cell tall
 const SEED := 12345             # fixed so runs are reproducible
 const SCREENSHOT_FRAMES := 20   # frames to settle before capturing
 const SCREENSHOT_PATH := "res://screenshots/latest.png"
-const PLAYER_START := Vector2i(0, 0)  # spawn / respawn cell
 const MAX_ENEMIES := 40            # concurrent enemy cap (perf + readability)
 # Gun stats live on the Weapon (range/damage/cooldown/...); these are visual-only.
 const LASER_WIDTH := 0.02          # beam thickness
@@ -56,6 +57,9 @@ var _card_rng := RandomNumberGenerator.new()     # card rolls (separate from spa
 var _card_layer: CanvasLayer                     # the level-up overlay while it's open
 var _spawn_rng := RandomNumberGenerator.new()   # enemy placement (separate from the director's)
 var _spawn_seq := 0                              # per-enemy seed counter
+var _drop_rng := RandomNumberGenerator.new()    # heart drop rolls (its own stream)
+var _kills := 0                                  # enemies slain this run
+var _run_time := 0.0                             # seconds survived this run
 var _stats := PlayerStats.new()
 var _weapon := Weapon.new()   # default = pistol
 var _health: int
@@ -63,15 +67,17 @@ var _attack_cd := 0.0
 var _special_cd := 0.0
 var _dead := false
 var _hp_label: Label
-var _status_label: Label
+var _info_label: Label                            # top-right time + kills readout
 var _flash: ColorRect
 var _level_label: Label
 var _xp_fill: ColorRect
+var _death_layer: CanvasLayer                      # the run-summary overlay on death
 
 
 func _ready() -> void:
 	seed(SEED)
 	_card_rng.seed = SEED + 9999      # distinct stream from spawning
+	_drop_rng.seed = SEED + 4242      # distinct stream for heart drops
 	_screenshot_mode = "--screenshot" in OS.get_cmdline_user_args()
 	_health = _stats.max_health
 
@@ -92,8 +98,8 @@ func _ready() -> void:
 		_face_toward(IsoGrid.grid_to_world(Vector2i(-3, 1)))  # down the open column
 		_try_attack()
 		_update_laser()
-		_stage_pickups()                  # a couple of gems + a partway XP bar
-		_stage_card_screen()              # the level-up overlay over the dimmed scene
+		_stage_pickups()                  # gems + a heart + a partway XP bar
+		_stage_death_screen()             # the run-summary overlay over the dimmed scene
 		_capture_after_settle()
 
 
@@ -107,14 +113,16 @@ func _process(delta: float) -> void:
 	if _screenshot_mode:                  # screenshot stages its own pose in _ready
 		_update_anim(false)
 		return
+	_run_time += delta
 	_aim_at_mouse()                       # face the cursor (independent of motion)
 	var dir := _move_input()
 	if dir != Vector3.ZERO:
 		_move_player(dir, delta)
-	_collect_pickups()                    # vacuum up nearby XP gems
+	_collect_pickups()                    # vacuum up nearby gems / hearts
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_try_attack()                     # automatic: hold to fire (cooldown-paced)
 	_update_laser()
+	_update_info()
 	_update_anim(dir != Vector3.ZERO)
 
 
@@ -360,6 +368,8 @@ func _spawn_enemy(type: StringName, home: Vector2i) -> void:
 	enemy.attack_damage = preset["damage"]
 	enemy.detect_range = preset["detect"]
 	enemy.size = preset["size"]
+	enemy.body_radius = preset["radius"]
+	enemy.body_height = preset["height"]
 	enemy.set_meta(&"xp", preset["xp"])   # gem value dropped on death
 	enemy.hit_player.connect(_on_player_hit)
 	enemy.died.connect(_on_enemy_died)
@@ -398,6 +408,17 @@ func _build_hud() -> void:
 	_hp_label.add_theme_font_size_override("font_size", 22)
 	hud.add_child(_hp_label)
 
+	_info_label = Label.new()                      # time + kills, top-right
+	_info_label.anchor_left = 1.0
+	_info_label.anchor_right = 1.0
+	_info_label.offset_left = -260
+	_info_label.offset_right = -16
+	_info_label.offset_top = 12
+	_info_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_info_label.add_theme_font_size_override("font_size", 18)
+	_info_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(_info_label)
+
 	var xp_bg := ColorRect.new()                   # XP-bar backing
 	xp_bg.color = Color(0.1, 0.12, 0.16, 0.9)
 	xp_bg.position = Vector2(16, 44)
@@ -424,19 +445,18 @@ func _build_hud() -> void:
 	hint.modulate = Color(1, 1, 1, 0.7)
 	hud.add_child(hint)
 
-	_status_label = Label.new()                    # "YOU DIED" / respawn message
-	_status_label.add_theme_font_size_override("font_size", 48)
-	_status_label.set_anchors_preset(Control.PRESET_CENTER)
-	_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_status_label.visible = false
-	hud.add_child(_status_label)
-
 	_update_hp()
 	_update_xp_bar()
+	_update_info()
 
 
 func _update_hp() -> void:
 	_hp_label.text = "HP %d / %d" % [maxi(_health, 0), _stats.max_health]
+
+
+## Refreshes the top-right time + kills readout.
+func _update_info() -> void:
+	_info_label.text = "Time %s   Kills %d" % [RunSummary.format_time(_run_time), _kills]
 
 
 ## Refills the XP bar to the fraction into the current level and updates the label.
@@ -523,36 +543,54 @@ func _try_special() -> void:
 	pass
 
 
-## Enemy reached 0 HP (Enemy.died signal): drop an XP gem where it fell, then
-## drop it from the roster and despawn.
+## Enemy reached 0 HP (Enemy.died signal): tally the kill, drop an XP gem (and
+## maybe a heart) where it fell, then drop it from the roster and despawn.
 func _on_enemy_died(enemy) -> void:
-	_spawn_gem(Vector3(enemy.position.x, 0.0, enemy.position.z),
-			int(enemy.get_meta(&"xp", 1)))
+	_kills += 1
+	var at := Vector3(enemy.position.x, 0.0, enemy.position.z)
+	_spawn_gem(at, int(enemy.get_meta(&"xp", 1)))
+	if Drops.drops_heart(_drop_rng.randf()):
+		_spawn_pickup(at + Vector3(0.35, 0, 0.35), Drops.HEART_HEAL, &"heal")
 	_enemies.erase(enemy)
 	enemy.queue_free()
 
 
 ## Spawns an XP gem worth `xp` at the ground position `at`.
 func _spawn_gem(at: Vector3, xp: int) -> void:
-	var gem := Pickup.new()
-	add_child(gem)
-	gem.setup(at, xp, not _screenshot_mode)
-	_pickups.append(gem)
+	_spawn_pickup(at, xp, &"xp")
 
 
-## Collects every gem within the player's pickup_radius, awarding its XP.
+## Spawns a pickup of `kind` ("xp" / "heal") worth `amount` at `at`.
+func _spawn_pickup(at: Vector3, amount: int, kind: StringName) -> void:
+	var pickup := Pickup.new()
+	add_child(pickup)
+	pickup.setup(at, amount, not _screenshot_mode, kind)
+	_pickups.append(pickup)
+
+
+## Collects every pickup within the player's pickup_radius: gems grant XP, hearts
+## restore HP.
 func _collect_pickups() -> void:
 	if _pickups.is_empty():
 		return
 	var p := Vector2(_player.position.x, _player.position.z)
 	var kept: Array[Pickup] = []
-	for gem in _pickups:
-		if p.distance_to(Vector2(gem.position.x, gem.position.z)) <= _stats.pickup_radius:
-			_gain_xp(gem.value)
-			gem.queue_free()
+	for pickup in _pickups:
+		if p.distance_to(Vector2(pickup.position.x, pickup.position.z)) <= _stats.pickup_radius:
+			if pickup.kind == &"heal":
+				_heal(pickup.value)
+			else:
+				_gain_xp(pickup.value)
+			pickup.queue_free()
 		else:
-			kept.append(gem)
+			kept.append(pickup)
 	_pickups = kept
+
+
+## Restores HP up to the player's max.
+func _heal(amount: int) -> void:
+	_health = mini(_health + amount, _stats.max_health)
+	_update_hp()
 
 
 ## Adds XP, advancing the level (and firing the level-up hook) on a boundary cross.
@@ -647,23 +685,58 @@ func _flash_red() -> void:
 	create_tween().tween_property(_flash, "color:a", 0.0, 0.4)
 
 
+## Player HP hit 0: end the run — pause the world and show the run summary.
 func _die() -> void:
 	_dead = true
-	_status_label.text = "YOU DIED"
-	_status_label.visible = true
-	await get_tree().create_timer(1.5).timeout
-	_respawn()
+	get_tree().paused = true
+	_build_death_ui()
 
 
-## Resets the player to the start and sends every enemy home to patrol.
-func _respawn() -> void:
-	_health = _stats.max_health
-	_update_hp()
-	_status_label.visible = false
-	_set_player_cell(PLAYER_START)
-	for enemy in _enemies:
-		enemy.reset()
-	_dead = false
+## Builds the end-of-run overlay: "YOU DIED", the run summary, and a Restart
+## button (reachable by Enter via focus). Runs while paused, like the card screen.
+func _build_death_ui() -> void:
+	_death_layer = CanvasLayer.new()
+	_death_layer.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+	add_child(_death_layer)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.6)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_death_layer.add_child(dim)
+
+	var root := VBoxContainer.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.alignment = BoxContainer.ALIGNMENT_CENTER
+	root.add_theme_constant_override("separation", 20)
+	_death_layer.add_child(root)
+
+	var title := Label.new()
+	title.text = "YOU DIED"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 48)
+	title.modulate = Color(1.0, 0.3, 0.3)
+	root.add_child(title)
+
+	var summary := Label.new()
+	summary.text = RunSummary.summary(_level, _run_time, _kills)
+	summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	summary.add_theme_font_size_override("font_size", 24)
+	root.add_child(summary)
+
+	var restart := Button.new()
+	restart.text = "Restart run"
+	restart.custom_minimum_size = Vector2(200, 56)
+	restart.add_theme_font_size_override("font_size", 22)
+	restart.pressed.connect(_restart_run)
+	root.add_child(restart)
+	restart.grab_focus()                  # so Enter/Space restarts too
+
+
+## Reloads the scene for a fresh run (same SEED -> reproducible).
+func _restart_run() -> void:
+	get_tree().paused = false
+	get_tree().reload_current_scene()
 
 
 ## Finds the model's AnimationPlayer, resolves Walk/Idle, loops them, plays Idle.
@@ -710,19 +783,23 @@ func _flat_material(color: Color) -> StandardMaterial3D:
 
 # --- screenshot harness ------------------------------------------------------
 
-## Stages a couple of gems on the floor and a partway XP bar for the screenshot.
+## Stages gems + a heart on the floor and a partway XP bar for the screenshot.
 func _stage_pickups() -> void:
 	_spawn_gem(IsoGrid.grid_to_world(Vector2i(-2, 3)), 1)
 	_spawn_gem(IsoGrid.grid_to_world(Vector2i(-4, 2)), 1)
+	_spawn_pickup(IsoGrid.grid_to_world(Vector2i(-4, 4)), Drops.HEART_HEAL, &"heal")
 	_xp = 10                                  # level 2, ~55% into the bar (span 9)
 	_level = Progression.level_for_total(_xp)
 	_update_xp_bar()
 
 
-## Overlays the level-up card screen (3 seeded cards) for the screenshot. Not
-## paused — the static frame just needs the cards visible over the dimmed scene.
-func _stage_card_screen() -> void:
-	_build_card_ui(Upgrades.roll_choices(Upgrades.POOL, _card_rng, 3, _owned))
+## Overlays the run-summary (death) screen for the screenshot. Not paused — the
+## static frame just needs it visible over the dimmed scene.
+func _stage_death_screen() -> void:
+	_kills = 6
+	_run_time = 42.0
+	_update_info()
+	_build_death_ui()
 
 
 func _capture_after_settle() -> void:
