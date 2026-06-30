@@ -49,6 +49,7 @@ iso-game/
 ├── scripts/enemy_types.gd   # enemy stat/size/xp presets (grunt/fast/tank)
 ├── scripts/progression.gd   # pure XP curve: level<->total<->bar fill, tested
 ├── scripts/pickup.gd        # XP-gem node (cosmetic; main does the collection)
+├── scripts/upgrades.gd      # pure pick-a-card pool + roll_choices/apply, tested
 ├── tests/test_*.gd          # headless SceneTree tests, exit 0/1
 ├── tools/run_tests.sh       # run all tests
 ├── tools/screenshot.sh      # deterministic frame capture
@@ -112,6 +113,18 @@ iso-game/
   "Lv N" label by the HP. Crossing a boundary calls `_on_level_up` — a hook that
   Step 5 (pick-a-card) will fill in. In screenshot mode a couple of gems and a
   partway bar are staged deterministically.
+- **Level-up upgrades (pick-a-card).** Crossing a level boundary calls
+  `main.gd` `_on_level_up`, which **pauses the tree** (`get_tree().paused = true`)
+  and shows a card overlay. The cards are pure data + a seeded roller
+  (`scripts/upgrades.gd`, `tests/test_upgrades.gd`): `roll_choices` picks 3
+  distinct still-available cards (capped cards like multishot/pierce/shotgun
+  retire once `_owned[id]` hits their `max`), `apply` mutates the `PlayerStats`
+  /`Weapon` (stat kinds defer to `PlayerStats.apply`; multishot/pierce/gain_weapon
+  reshape the gun). Clicking a card applies it and unpauses (`_choose_card`).
+  **Pause plumbing:** gameplay nodes use the default (pausable) `process_mode` so
+  the world freezes; only the card `CanvasLayer` is `PROCESS_MODE_WHEN_PAUSED` so
+  its buttons stay live. Card rolls use their own seeded RNG (`_card_rng`) so they
+  don't desync spawning. Screenshot mode stages the overlay over the dimmed scene.
 - **Combat / health.** Enemies in ATTACK deal `attack_damage` every
   `attack_interval`s via the `hit_player` signal. `main.gd` tracks player HP
   (HUD label + red hit-flash); at 0 HP it shows "YOU DIED" and `_respawn()`

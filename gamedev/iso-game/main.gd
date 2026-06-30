@@ -20,6 +20,7 @@ const SpawnDirector := preload("res://scripts/spawn_director.gd")
 const EnemyTypes := preload("res://scripts/enemy_types.gd")
 const Pickup := preload("res://scripts/pickup.gd")
 const Progression := preload("res://scripts/progression.gd")
+const Upgrades := preload("res://scripts/upgrades.gd")
 
 const GRID_RADIUS := 6          # grid spans -RADIUS..RADIUS on both axes
 const PLAYER_Y := 0.0           # player rig origin is at the feet, on the ground
@@ -50,6 +51,9 @@ var _enemies: Array[Enemy] = []
 var _pickups: Array[Pickup] = []                 # XP gems on the floor
 var _xp := 0                                     # cumulative XP this run
 var _level := 1
+var _owned := {}                                 # upgrade id -> times taken (retires maxed cards)
+var _card_rng := RandomNumberGenerator.new()     # card rolls (separate from spawning, so neither desyncs the other)
+var _card_layer: CanvasLayer                     # the level-up overlay while it's open
 var _spawn_rng := RandomNumberGenerator.new()   # enemy placement (separate from the director's)
 var _spawn_seq := 0                              # per-enemy seed counter
 var _stats := PlayerStats.new()
@@ -67,6 +71,7 @@ var _xp_fill: ColorRect
 
 func _ready() -> void:
 	seed(SEED)
+	_card_rng.seed = SEED + 9999      # distinct stream from spawning
 	_screenshot_mode = "--screenshot" in OS.get_cmdline_user_args()
 	_health = _stats.max_health
 
@@ -88,6 +93,7 @@ func _ready() -> void:
 		_try_attack()
 		_update_laser()
 		_stage_pickups()                  # a couple of gems + a partway XP bar
+		_stage_card_screen()              # the level-up overlay over the dimmed scene
 		_capture_after_settle()
 
 
@@ -559,10 +565,79 @@ func _gain_xp(amount: int) -> void:
 	_update_xp_bar()
 
 
-## Crossed a level boundary. Step 5 will pause here and show the pick-a-card
-## upgrade screen; for now the level just ticks up (the HUD reflects it).
+## Crossed a level boundary: pause the world and show the pick-a-card screen.
+## (Screenshot mode stages its own card overlay, so it skips the live trigger.)
 func _on_level_up() -> void:
-	pass
+	if _screenshot_mode:
+		return
+	_show_card_screen()
+
+
+## Rolls 3 seeded upgrade cards, pauses the game, and shows the overlay. No-op if
+## the pool is exhausted (every card maxed) so play never freezes with no choice.
+func _show_card_screen() -> void:
+	var choices := Upgrades.roll_choices(Upgrades.POOL, _card_rng, 3, _owned)
+	if choices.is_empty():
+		return
+	get_tree().paused = true
+	_build_card_ui(choices)
+
+
+## Builds the level-up overlay: a dimmer + a row of card buttons. The layer runs
+## while the tree is paused (PROCESS_MODE_WHEN_PAUSED) so its buttons stay live.
+func _build_card_ui(choices: Array) -> void:
+	_card_layer = CanvasLayer.new()
+	_card_layer.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+	add_child(_card_layer)
+
+	var dim := ColorRect.new()                     # dims + swallows clicks to the game
+	dim.color = Color(0, 0, 0, 0.6)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_card_layer.add_child(dim)
+
+	var root := VBoxContainer.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.alignment = BoxContainer.ALIGNMENT_CENTER
+	root.add_theme_constant_override("separation", 24)
+	_card_layer.add_child(root)
+
+	var title := Label.new()
+	title.text = "LEVEL %d — choose an upgrade" % _level
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 32)
+	root.add_child(title)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 20)
+	root.add_child(row)
+	for choice in choices:
+		row.add_child(_make_card_button(choice))
+
+
+## One upgrade card as a button (title + description); click applies the choice.
+func _make_card_button(choice: Dictionary) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(190, 230)
+	b.text = "%s\n\n%s" % [choice["title"], choice["desc"]]
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	b.add_theme_font_size_override("font_size", 20)
+	b.pressed.connect(_choose_card.bind(choice))
+	return b
+
+
+## Applies the picked card, records it as owned, closes the screen, and unpauses.
+## A max-HP card also heals by the same amount (so the level-up feels rewarding).
+func _choose_card(choice: Dictionary) -> void:
+	Upgrades.apply(_stats, _weapon, choice)
+	_owned[choice["id"]] = int(_owned.get(choice["id"], 0)) + 1
+	if choice["kind"] == &"max_health":
+		_health += int(choice["value"])
+	_update_hp()
+	_card_layer.queue_free()
+	_card_layer = null
+	get_tree().paused = false
 
 
 func _flash_red() -> void:
@@ -642,6 +717,12 @@ func _stage_pickups() -> void:
 	_xp = 10                                  # level 2, ~55% into the bar (span 9)
 	_level = Progression.level_for_total(_xp)
 	_update_xp_bar()
+
+
+## Overlays the level-up card screen (3 seeded cards) for the screenshot. Not
+## paused — the static frame just needs the cards visible over the dimmed scene.
+func _stage_card_screen() -> void:
+	_build_card_ui(Upgrades.roll_choices(Upgrades.POOL, _card_rng, 3, _owned))
 
 
 func _capture_after_settle() -> void:
