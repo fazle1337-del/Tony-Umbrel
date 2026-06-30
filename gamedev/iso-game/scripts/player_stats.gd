@@ -12,6 +12,7 @@ extends RefCounted
 
 var move_speed := 4.0          # world units / second
 var max_health := 100
+var pickup_radius := 1.2       # XP gems within this distance are collected
 
 # Multipliers accumulated by upgrades (1.0 = unchanged).
 var damage_mult := 1.0
@@ -34,6 +35,7 @@ func apply(kind: StringName, value: float) -> void:
 	match kind:
 		&"move_speed": move_speed += value
 		&"max_health": max_health += int(value)
+		&"pickup_radius": pickup_radius += value
 		&"damage_mult": damage_mult += value
 		&"fire_rate_mult": fire_rate_mult += value
 		_: push_warning("PlayerStats.apply: unknown kind %s" % kind)

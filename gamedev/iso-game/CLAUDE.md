@@ -46,7 +46,9 @@ iso-game/
 ├── scripts/weapon.gd        # weapon data + pure fire_pattern (multishot/spread), tested
 ├── scripts/spawn_schedule.gd# pure spawn interval + type curve, tested
 ├── scripts/spawn_director.gd# node: streams enemies off the schedule
-├── scripts/enemy_types.gd   # enemy stat/size presets (grunt/fast/tank)
+├── scripts/enemy_types.gd   # enemy stat/size/xp presets (grunt/fast/tank)
+├── scripts/progression.gd   # pure XP curve: level<->total<->bar fill, tested
+├── scripts/pickup.gd        # XP-gem node (cosmetic; main does the collection)
 ├── tests/test_*.gd          # headless SceneTree tests, exit 0/1
 ├── tools/run_tests.sh       # run all tests
 ├── tools/screenshot.sh      # deterministic frame capture
@@ -101,6 +103,15 @@ iso-game/
   grunt / fast / tank). `main.gd` `_spawn_enemy`/`_on_spawn` place them (free edge
   cell, `MAX_ENEMIES` cap). Seeded RNG → reproducible. In screenshot mode the
   director is skipped and a fixed crowd is staged instead.
+- **XP & levels (survivors-like).** Each enemy drops an XP **gem** where it dies
+  (`scripts/pickup.gd`; value by type — `EnemyTypes.PRESETS[*].xp`, tougher worth
+  more). The player **vacuums** gems within `_stats.pickup_radius`
+  (`main.gd` `_collect_pickups`), accruing `_xp`. The level curve is pure +
+  tested (`scripts/progression.gd`, `tests/test_progression.gd`): `xp_span(level)`
+  is the bar's width, `level_for_total`/`xp_into_level` drive the HUD XP bar +
+  "Lv N" label by the HP. Crossing a boundary calls `_on_level_up` — a hook that
+  Step 5 (pick-a-card) will fill in. In screenshot mode a couple of gems and a
+  partway bar are staged deterministically.
 - **Combat / health.** Enemies in ATTACK deal `attack_damage` every
   `attack_interval`s via the `hit_player` signal. `main.gd` tracks player HP
   (HUD label + red hit-flash); at 0 HP it shows "YOU DIED" and `_respawn()`

@@ -18,6 +18,8 @@ const PlayerStats := preload("res://scripts/player_stats.gd")
 const Weapon := preload("res://scripts/weapon.gd")
 const SpawnDirector := preload("res://scripts/spawn_director.gd")
 const EnemyTypes := preload("res://scripts/enemy_types.gd")
+const Pickup := preload("res://scripts/pickup.gd")
+const Progression := preload("res://scripts/progression.gd")
 
 const GRID_RADIUS := 6          # grid spans -RADIUS..RADIUS on both axes
 const PLAYER_Y := 0.0           # player rig origin is at the feet, on the ground
@@ -32,6 +34,8 @@ const MAX_ENEMIES := 40            # concurrent enemy cap (perf + readability)
 const LASER_WIDTH := 0.02          # beam thickness
 const LASER_Y := 0.55              # emit height (roughly chest level)
 const GUN_OFFSET := 0.22           # muzzle offset to the player's right
+const XP_BAR_WIDTH := 200.0        # HUD XP-bar width in pixels
+const XP_BAR_HEIGHT := 12.0
 
 var _world: GridWorld
 var _player: Node3D
@@ -43,6 +47,9 @@ var _anim: AnimationPlayer   # the model's animation player (Walk/Idle/...)
 var _walk_anim := ""
 var _idle_anim := ""
 var _enemies: Array[Enemy] = []
+var _pickups: Array[Pickup] = []                 # XP gems on the floor
+var _xp := 0                                     # cumulative XP this run
+var _level := 1
 var _spawn_rng := RandomNumberGenerator.new()   # enemy placement (separate from the director's)
 var _spawn_seq := 0                              # per-enemy seed counter
 var _stats := PlayerStats.new()
@@ -54,6 +61,8 @@ var _dead := false
 var _hp_label: Label
 var _status_label: Label
 var _flash: ColorRect
+var _level_label: Label
+var _xp_fill: ColorRect
 
 
 func _ready() -> void:
@@ -78,6 +87,7 @@ func _ready() -> void:
 		_face_toward(IsoGrid.grid_to_world(Vector2i(-3, 1)))  # down the open column
 		_try_attack()
 		_update_laser()
+		_stage_pickups()                  # a couple of gems + a partway XP bar
 		_capture_after_settle()
 
 
@@ -95,6 +105,7 @@ func _process(delta: float) -> void:
 	var dir := _move_input()
 	if dir != Vector3.ZERO:
 		_move_player(dir, delta)
+	_collect_pickups()                    # vacuum up nearby XP gems
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_try_attack()                     # automatic: hold to fire (cooldown-paced)
 	_update_laser()
@@ -343,6 +354,7 @@ func _spawn_enemy(type: StringName, home: Vector2i) -> void:
 	enemy.attack_damage = preset["damage"]
 	enemy.detect_range = preset["detect"]
 	enemy.size = preset["size"]
+	enemy.set_meta(&"xp", preset["xp"])   # gem value dropped on death
 	enemy.hit_player.connect(_on_player_hit)
 	enemy.died.connect(_on_enemy_died)
 	add_child(enemy)
@@ -380,9 +392,28 @@ func _build_hud() -> void:
 	_hp_label.add_theme_font_size_override("font_size", 22)
 	hud.add_child(_hp_label)
 
+	var xp_bg := ColorRect.new()                   # XP-bar backing
+	xp_bg.color = Color(0.1, 0.12, 0.16, 0.9)
+	xp_bg.position = Vector2(16, 44)
+	xp_bg.size = Vector2(XP_BAR_WIDTH, XP_BAR_HEIGHT)
+	xp_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(xp_bg)
+
+	_xp_fill = ColorRect.new()                     # XP-bar fill (left-anchored)
+	_xp_fill.color = Color(0.25, 0.85, 0.75, 0.95)
+	_xp_fill.position = Vector2(16, 44)
+	_xp_fill.size = Vector2(0, XP_BAR_HEIGHT)
+	_xp_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(_xp_fill)
+
+	_level_label = Label.new()                     # level readout by the bar
+	_level_label.position = Vector2(16 + XP_BAR_WIDTH + 10, 38)
+	_level_label.add_theme_font_size_override("font_size", 18)
+	hud.add_child(_level_label)
+
 	var hint := Label.new()                        # controls reminder
 	hint.text = "Arrows: move    Mouse: aim    L-click: shoot    R-click: special"
-	hint.position = Vector2(16, 44)
+	hint.position = Vector2(16, 64)
 	hint.add_theme_font_size_override("font_size", 15)
 	hint.modulate = Color(1, 1, 1, 0.7)
 	hud.add_child(hint)
@@ -395,10 +426,20 @@ func _build_hud() -> void:
 	hud.add_child(_status_label)
 
 	_update_hp()
+	_update_xp_bar()
 
 
 func _update_hp() -> void:
 	_hp_label.text = "HP %d / %d" % [maxi(_health, 0), _stats.max_health]
+
+
+## Refills the XP bar to the fraction into the current level and updates the label.
+func _update_xp_bar() -> void:
+	var span := Progression.xp_span(_level)
+	var into := Progression.xp_into_level(_xp)
+	var frac := clampf(float(into) / float(span), 0.0, 1.0) if span > 0 else 0.0
+	_xp_fill.size = Vector2(XP_BAR_WIDTH * frac, XP_BAR_HEIGHT)
+	_level_label.text = "Lv %d" % _level
 
 
 ## Called when an enemy lands a hit (Enemy.hit_player signal).
@@ -476,10 +517,52 @@ func _try_special() -> void:
 	pass
 
 
-## Enemy reached 0 HP (Enemy.died signal): drop it from the roster and despawn.
+## Enemy reached 0 HP (Enemy.died signal): drop an XP gem where it fell, then
+## drop it from the roster and despawn.
 func _on_enemy_died(enemy) -> void:
+	_spawn_gem(Vector3(enemy.position.x, 0.0, enemy.position.z),
+			int(enemy.get_meta(&"xp", 1)))
 	_enemies.erase(enemy)
 	enemy.queue_free()
+
+
+## Spawns an XP gem worth `xp` at the ground position `at`.
+func _spawn_gem(at: Vector3, xp: int) -> void:
+	var gem := Pickup.new()
+	add_child(gem)
+	gem.setup(at, xp, not _screenshot_mode)
+	_pickups.append(gem)
+
+
+## Collects every gem within the player's pickup_radius, awarding its XP.
+func _collect_pickups() -> void:
+	if _pickups.is_empty():
+		return
+	var p := Vector2(_player.position.x, _player.position.z)
+	var kept: Array[Pickup] = []
+	for gem in _pickups:
+		if p.distance_to(Vector2(gem.position.x, gem.position.z)) <= _stats.pickup_radius:
+			_gain_xp(gem.value)
+			gem.queue_free()
+		else:
+			kept.append(gem)
+	_pickups = kept
+
+
+## Adds XP, advancing the level (and firing the level-up hook) on a boundary cross.
+func _gain_xp(amount: int) -> void:
+	_xp += amount
+	var lvl := Progression.level_for_total(_xp)
+	if lvl > _level:
+		_level = lvl
+		_on_level_up()
+	_update_xp_bar()
+
+
+## Crossed a level boundary. Step 5 will pause here and show the pick-a-card
+## upgrade screen; for now the level just ticks up (the HUD reflects it).
+func _on_level_up() -> void:
+	pass
 
 
 func _flash_red() -> void:
@@ -551,6 +634,15 @@ func _flat_material(color: Color) -> StandardMaterial3D:
 
 
 # --- screenshot harness ------------------------------------------------------
+
+## Stages a couple of gems on the floor and a partway XP bar for the screenshot.
+func _stage_pickups() -> void:
+	_spawn_gem(IsoGrid.grid_to_world(Vector2i(-2, 3)), 1)
+	_spawn_gem(IsoGrid.grid_to_world(Vector2i(-4, 2)), 1)
+	_xp = 10                                  # level 2, ~55% into the bar (span 9)
+	_level = Progression.level_for_total(_xp)
+	_update_xp_bar()
+
 
 func _capture_after_settle() -> void:
 	for _i in SCREENSHOT_FRAMES:

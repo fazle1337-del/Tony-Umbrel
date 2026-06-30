@@ -30,6 +30,8 @@ func _initialize() -> void:
 	_near(s.move_speed, 5.5, "move_speed adds")
 	s.apply(&"max_health", 50)
 	_eq_i(s.max_health, 150, "max_health adds")
+	s.apply(&"pickup_radius", 0.5)
+	_near(s.pickup_radius, 1.7, "pickup_radius adds")
 
 	if _failures == 0:
 		print("test_player_stats: OK")
