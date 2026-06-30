@@ -69,11 +69,13 @@ cd ~/.local/share/godot-mcp && git pull && npm install && npm run build
 - `poc-game/` — "catch the falling blocks" 2D proof-of-concept. Smoke-tests the
   full pipeline (input, `_process`, `Area2D` collision/signals, `_draw`, UI).
   Headless self-test: `godot --headless --path poc-game -- --self-test`.
-- `iso-game/` — the main game: isometric (real 3D + orthographic camera) with
-  A* click-to-move pathfinding around obstacles, finite-state-machine enemies
-  (line-of-sight chase, patrol routes) and player health/damage/respawn. Has its
-  own `CLAUDE.md` and a self-verification harness (see below). **Start here for
-  game work.**
+- `iso-game/` — the main game: an isometric (real 3D + orthographic camera)
+  **survivors-like twin-stick shooter** in progress — arrow-key movement, mouse
+  aim, hold-to-fire gun with laser sight + glowing bullets, and a SpawnDirector
+  streaming finite-state-machine enemies (grunt/fast/tank). Composable
+  `PlayerStats`/`Weapon` underpin the planned XP/level-up/upgrade systems (see
+  `iso-game/ROADMAP.md`). Has its own `CLAUDE.md` and a self-verification harness
+  (see below). **Start here for game work.**
 - New games: create a folder with its own `project.godot`. Keep one Godot
   project per subfolder so the MCP `projectPath` stays unambiguous.
 
