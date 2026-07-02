@@ -4,7 +4,7 @@ name: Pen Test Tracker
 tagline: Track pentest findings through remediation with RBAC
 icon: https://cdn-icons-png.flaticon.com/512/2913/2913133.png
 category: files & productivity
-version: "0.8.0"
+version: "0.8.1"
 port: 8099
 description: >-
   Ingest penetration test reports and track findings through remediation.
@@ -33,6 +33,6 @@ submission: ""
 repo: ""
 support: ""
 gallery: []
-releaseNotes: "New Dashboard tab — the app now opens to a risk overview (open findings by risk rating, SLA breaches, and upcoming BAU schedule) tailored to your role: admins see everything, team members see just their own team's findings. Also lays groundwork for an optional EasyVista (ITSM) ticket integration — off by default, no visible change unless an admin turns it on. All changes are backward compatible and apply automatically on update."
+releaseNotes: "Bug fix: the new Dashboard's upcoming-schedule list only showed BAU calendar bookings, so tests imported via CSV (which don't create a booking) never appeared even with a real due date. The Dashboard now also lists upcoming tests that don't have a booking yet, without duplicating ones that do. All changes are backward compatible and apply automatically on update."
 dependencies: []
 path: ""
